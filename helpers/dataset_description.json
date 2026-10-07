@@ -1,0 +1,12 @@
+{
+    "Name": "YOUR STUDY NAME (EDIT ME)",
+    "BIDSVersion": "1.9.0",
+    "DatasetType": "raw",
+    "Authors": [
+        "TODO"
+    ],
+    "Funding": [
+        "TODO"
+    ],
+    "License": "TODO"
+}

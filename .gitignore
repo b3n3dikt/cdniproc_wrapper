@@ -1,0 +1,9 @@
+# job logs (keep the folder, not the contents)
+logs/*
+!logs/.keep
+# Word/Office lock files, OS junk
+~$*
+.DS_Store
+# editor/python
+__pycache__/
+*.pyc

@@ -11,7 +11,7 @@ It does not reimplement the lab code. It calls the shared versions on the MSI se
 ## Quick start
 
 ```bash
-git clone https://github.com/<you>/cdniproc_wrapper.git && cd cdniproc_wrapper
+git clone https://github.com/b3n3dikt/cdniproc_wrapper.git && cd cdniproc_wrapper
 $EDITOR config.sh      # set your SLURM account, S3 bucket, output location (see below)
 mkdir -p logs
 

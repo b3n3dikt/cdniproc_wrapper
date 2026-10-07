@@ -22,7 +22,7 @@ The workflow in short: **pull the folder, edit config.sh, run the steps you want
 
 ## 2. Getting started
 
-- [ ] Clone the repository on the MSI server: `git clone <repo-url> cdniproc_wrapper && cd cdniproc_wrapper`
+- [ ] Clone the repository on the MSI server: `git clone https://github.com/b3n3dikt/cdniproc_wrapper.git && cd cdniproc_wrapper`
 - [ ] Edit `config.sh` (section 3 explains each setting). At minimum: SLURM_ACCOUNT, S3_BUCKET, OUT_BASE, CONDA_ENV.
 - [ ] Create the log folder: `mkdir -p logs`
 - [ ] 7T only: copy `Bias_field_script_job.m` from the old cdniproc_reprocess/pCodePath/ into helpers/ (not included in the repository).

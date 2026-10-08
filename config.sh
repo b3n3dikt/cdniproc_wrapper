@@ -127,8 +127,8 @@ export INTENDEDFOR_METHOD="jsbr"
 
 # Reviewing the summary TSV (step 01 -> 02). Default 0: step 02 uses the TSV exactly as it is (edit it in LibreOffice
 # or VS Code, the original way). 1 = also copy your edits from summaries/<sub>_<ses>.view.txt into the TSV first.
-# Normally you set this per run with  ./run_subject.sh ... --use-view  instead of here.
-export USE_VIEW_EDITS="${USE_VIEW_EDITS:-0}"
+# Normally you set this per run with  ./run_subject.sh ... --use-txt  instead of here.
+export USE_TXT_EDITS="${USE_TXT_EDITS:-0}"
 
 # Where anatomicals go in bids_sessions:  subject = sub-X/anat   |   session = sub-X/ses-N/anat
 export SESSIONS_ANAT="subject"

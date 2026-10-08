@@ -70,13 +70,13 @@ Our own code is in `helpers/` (`apply_label_rules.py`, `make_layouts.py`, `Inten
 2. *The text-file way (no LibreOffice):* step 01 also writes `summaries/sub-X_ses-Y.view.txt`, a short aligned table with the columns that matter, plus a CHECKS section (unlabelled series, rest runs missing a magnitude/phase partner, fmaps without PEdir). Open it in VS Code or `nano` and edit the columns marked `*` (`label, MP, acq, PEdir, inv, nEcho`; an empty cell is a single `.`). Then:
    ```bash
    python helpers/view_tsv.py status summaries/sub-X_ses-Y.tsv     # preview: lists your edits + re-runs the checks
-   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-view                 # step 02 copies your edits into the TSV first
+   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-txt                 # step 02 copies your edits into the TSV first
    ```
 
 How the two are kept from fighting each other:
-- The TSV is always the source of truth. `--use-view` never regenerates it from the text file; it only writes the **cells you changed** in the text file (compared with a hidden snapshot taken when the view was made). Anything changed in the TSV by hand (LibreOffice) is kept.
+- The TSV is always the source of truth. `--use-txt` never regenerates it from the text file; it only writes the **cells you changed** in the text file (compared with a hidden snapshot taken when the view was made). Anything changed in the TSV by hand (LibreOffice) is kept.
 - Same cell changed to different values in both files: nothing is written and the conflict is listed.
-- Without `--use-view`, step 02 uses the TSV exactly as before. If the text file contains edits that are not in the TSV, step 02 **stops** and tells you, so edits are never silently ignored.
+- Without `--use-txt`, step 02 uses the TSV exactly as before. If the text file contains edits that are not in the TSV, step 02 **stops** and tells you, so edits are never silently ignored.
 - A timestamped backup of the TSV (`*.tsv.bak-…`) is made before any edit is written, and the view is refreshed after step 02 (`tsv_to_json.py` recalculates `runNum`).
 - Rerunning step 01 rebuilds the TSV and the view; the previous ones are kept as `*.prev`.
 - `python helpers/view_tsv.py make <tsv> --force` throws away the text edits and rebuilds the view from the TSV.

@@ -115,10 +115,10 @@ When running by hand like this, always do it from the repository folder so the r
 
 **Output:** `OUT_BASE/<MAGNET>/summaries/sub-<SUB>_ses-<SES>.tsv`
 
-**Two ways to fix the TSV; both end with the same TSV, which is what step 02 reads.** (1) The original way: open the .tsv in LibreOffice or any editor, fix it, save, run step 02. (2) The text-file way, no LibreOffice: step 01 also writes `sub-<SUB>_ses-<SES>.view.txt` next to the TSV, a short aligned table with a CHECKS section (unlabelled series, rest runs missing a magnitude or phase partner, fmaps without PEdir). Edit the columns marked * (label, MP, acq, PEdir, inv, nEcho; write an empty cell as a single dot). Then preview with `python helpers/view_tsv.py status <tsv>` and run step 02 with `--use-view` (`./run_subject.sh SUB [MAGNET] SES --from 2 --use-view`).
+**Two ways to fix the TSV; both end with the same TSV, which is what step 02 reads.** (1) The original way: open the .tsv in LibreOffice or any editor, fix it, save, run step 02. (2) The text-file way, no LibreOffice: step 01 also writes `sub-<SUB>_ses-<SES>.view.txt` next to the TSV, a short aligned table with a CHECKS section (unlabelled series, rest runs missing a magnitude or phase partner, fmaps without PEdir). Edit the columns marked * (label, MP, acq, PEdir, inv, nEcho; write an empty cell as a single dot). Then preview with `python helpers/view_tsv.py status <tsv>` and run step 02 with `--use-txt` (`./run_subject.sh SUB [MAGNET] SES --from 2 --use-txt`).
 
-- The TSV stays the source of truth. --use-view writes only the cells you changed in the text file (compared with a hidden snapshot taken when the view was made); anything changed in the TSV by hand is kept. If the same cell was changed differently in both, nothing is written and the conflict is listed.
-- Without --use-view step 02 uses the TSV as before. If the text file holds edits that are not in the TSV, step 02 stops and says so, so edits are never silently ignored.
+- The TSV stays the source of truth. --use-txt writes only the cells you changed in the text file (compared with a hidden snapshot taken when the view was made); anything changed in the TSV by hand is kept. If the same cell was changed differently in both, nothing is written and the conflict is listed.
+- Without --use-txt step 02 uses the TSV as before. If the text file holds edits that are not in the TSV, step 02 stops and says so, so edits are never silently ignored.
 - A backup of the TSV (.tsv.bak-<time>) is made before edits are written. `python helpers/view_tsv.py make <tsv> --force` discards text edits and rebuilds the view. Rerunning step 01 keeps the previous TSV and view as .prev.
 
 **You must review the TSV** (use the .view.txt to check it, edit the .tsv) before step 02:

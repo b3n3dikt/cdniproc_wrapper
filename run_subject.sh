@@ -3,7 +3,7 @@
 # Run it on the login node (it only submits jobs; it is not itself an sbatch script).
 #
 # Usage:
-#   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout combined|sessions] [--use-view]
+#   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout combined|sessions] [--use-txt]
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
@@ -16,7 +16,7 @@
 #   ./run_subject.sh SUB001 01 02                # same thing; MAGNET left out, so DEFAULT_MAGNET (3T) is used
 #   ./run_subject.sh SUB001 3T 01 02 --to 1      # step 1 only: make the summary TSVs so you can review them
 #   ./run_subject.sh SUB001 3T 01 02 --from 2    # TSVs are reviewed: steps 2-5 (convert, NORDIC, layouts, fMRIPrep + XCP-D)
-#   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-view   # same, but first copy your edits from the .view.txt into the TSV
+#   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-txt   # same, but first copy your edits from the .view.txt into the TSV
 #   ./run_subject.sh SUB001 7T 7T1 --from 4      # 7T subject, session label 7T1: rerun just step 4 (NORDIC already done)
 #
 # Chain:  01 -> 02 -> 03   (one chain per session, sessions run in parallel)
@@ -34,7 +34,7 @@ while (( $# )); do
         --from)   FROM="$2"; shift 2 ;;
         --to)     TO="$2"; shift 2 ;;
         --layout) LAYOUT="$2"; shift 2 ;;
-        --use-view) export USE_VIEW_EDITS=1; shift ;;
+        --use-txt|--use-view) export USE_TXT_EDITS=1; shift ;;   # --use-view = old name, still accepted
         -h|--help) usage; exit 0 ;;
         *) POS+=("$1"); shift ;;
     esac
@@ -52,7 +52,7 @@ set_magnet "${MAG}"            # validates MAGNET, creates folders
 cd "${CODE_DIR}"               # jobs write logs to ./logs
 mkdir -p logs
 # absolute log paths: the relative "logs/..." in the #SBATCH lines only works if sbatch is run from this folder
-SB=(sbatch --parsable --export=ALL,CODE_DIR="${CODE_DIR}",USE_VIEW_EDITS="${USE_VIEW_EDITS}" -A "${SLURM_ACCOUNT}"
+SB=(sbatch --parsable --export=ALL,CODE_DIR="${CODE_DIR}",USE_TXT_EDITS="${USE_TXT_EDITS}" -A "${SLURM_ACCOUNT}"
     -o "${CODE_DIR}/logs/%x_%j.out" -e "${CODE_DIR}/logs/%x_%j.err")
 
 submit() {                     # submit <dependency-or-empty> <script> <args...>  -> echoes job id

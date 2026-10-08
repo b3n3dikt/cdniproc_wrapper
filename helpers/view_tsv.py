@@ -153,7 +153,7 @@ def render(tsv, d, bad, info, note=""):
          "# Edit only columns marked *  (label, MP, acq, PEdir, inv, nEcho).  Empty = a single dot  .",
          "# '?' at the start of a line = no label, series will NOT be converted.  Do not add/remove/reorder lines.",
          "# After editing:  python helpers/view_tsv.py status <tsv>   (preview + checks)",
-         "#                 step 02 with --use-view copies your edits into the TSV; without it, edits here are NOT used.",
+         "#                 step 02 with --use-txt copies your edits into the TSV; without it, edits here are NOT used.",
          "#",
          "  " + fmt({k: h for k, h in cols}),
          "  " + "  ".join("-" * widths[k] for k, _ in cols)]

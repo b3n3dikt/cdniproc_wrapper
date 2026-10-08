@@ -34,12 +34,12 @@ need_cmd python dcm2bids dcm2niix s3cmd
 
 # The TSV is what tsv_to_json.py reads. summaries/<sub>_<ses>.view.txt is an optional text version of it.
 VIEW_PY="${HELPERS}/view_tsv.py"
-if [[ "${USE_VIEW_EDITS:-0}" == "1" ]]; then
-    log "0/3 --use-view: copying your edits from the text view into the TSV (edits made directly in the TSV are kept)"
+if [[ "${USE_TXT_EDITS:-0}" == "1" ]]; then
+    log "0/3 --use-txt: copying your edits from the text view into the TSV (edits made directly in the TSV are kept)"
     python "${VIEW_PY}" apply "${TSV}" || die "could not apply the text-view edits - see above. Nothing was changed."
 else
     rc=0; python "${VIEW_PY}" status "${TSV}" || rc=$?
-    (( rc == 0 )) || die "the text view has edits that are NOT in the TSV. Rerun with --use-view to use them, or undo them (python helpers/view_tsv.py make ${TSV} --force discards them). Not continuing, so nothing is silently ignored."
+    (( rc == 0 )) || die "the text view has edits that are NOT in the TSV. Rerun with --use-txt to use them, or undo them (python helpers/view_tsv.py make ${TSV} --force discards them). Not continuing, so nothing is silently ignored."
 fi
 
 log "1/3 TSV -> dcm2bids config"

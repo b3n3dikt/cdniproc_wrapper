@@ -115,7 +115,7 @@ When running by hand like this, always do it from the repository folder so the r
 
 **Output:** `OUT_BASE/<MAGNET>/summaries/sub-<SUB>_ses-<SES>.tsv`
 
-**Two ways to fix the TSV; both end with the same TSV, which is what step 02 reads.** (1) The original way: open the .tsv in LibreOffice or any editor, fix it, save, run step 02. (2) The text-file way, no LibreOffice: step 01 also writes `sub-<SUB>_ses-<SES>.view.txt` next to the TSV, a short aligned table with a CHECKS section (unlabelled series, rest runs missing a magnitude or phase partner, fmaps without PEdir). Edit the columns marked * (label, MP, acq, PEdir, inv, nEcho; write an empty cell as a single dot). Then preview with `python helpers/view_tsv.py status <tsv>` and run step 02 with `--use-txt` (`./run_subject.sh SUB [MAGNET] SES --from 2 --use-txt`).
+**Two ways to fix the TSV; both end with the same TSV, which is what step 02 reads.** (1) The original way: open the .tsv in LibreOffice or any editor, fix it, save, run step 02. (2) The text-file way, no LibreOffice: step 01 also writes `sub-<SUB>_ses-<SES>.view.txt` next to the TSV, a short aligned table with a CHECKS section (unlabelled series, rest runs missing a magnitude or phase partner, fmaps without PEdir). Edit the columns marked * (label, MP, acq, PEdir, inv, nEcho; write an empty cell as a single dot). Optionally preview with `python helpers/view_tsv.py status <tsv>` (run `conda activate py11` first; it needs pandas; it catches typos in seconds instead of after the job has queued), then run step 02 with `--use-txt` (`./run_subject.sh SUB [MAGNET] SES --from 2 --use-txt`).
 
 - The TSV stays the source of truth. --use-txt writes only the cells you changed in the text file (compared with a hidden snapshot taken when the view was made); anything changed in the TSV by hand is kept. If the same cell was changed differently in both, nothing is written and the conflict is listed.
 - Without --use-txt step 02 uses the TSV as before. If the text file holds edits that are not in the TSV, step 02 stops and says so, so edits are never silently ignored.
@@ -211,12 +211,31 @@ MAGNET only matters for studies that have both 3T and 7T data. Studies with one 
 | "no *_part-mag_* func files" (02) | The TSV has no M/P rows for the rest runs. Fix label and MP, rerun 02. |
 | "Invalid account or account/partition" in step 03 | The lab NORDIC script hard-codes -p msismall. Set RES_NORDIC_PART in config.sh to a partition your account can use and rerun 03. |
 | NORDIC jobs TIMEOUT | Raise RES_NORDIC_TIME in config.sh (lab default 1.5 h), rerun 03 then 04. |
+| Step 01 finds no DICOMs / wrong S3 URL | The step 01 log line "pulling last DICOM of each series: s3://..." shows the path used. Compare it with `s3cmd ls s3://<bucket>/...` and fix S3_BUCKET / S3_DICOM_PATH in config.sh. |
+| Step 02 stops: "the text view has edits that are NOT in the TSV" | You edited the .view.txt but did not pass --use-txt. Rerun with --use-txt, or discard the text edits with `python helpers/view_tsv.py make <tsv> --force`. |
+| git pull refuses (local changes / unmerged files) | See section 9, Updating to a newer version. |
 | "NORDIC FAILED" (04) | Check logs/nordic/*.err, rerun 03 for that session, rerun 04. |
 | fmap JSON without IntendedFor | Rerun 04 (or `--from 4`). Try INTENDEDFOR_METHOD=lab to compare. |
 | BIDS validator or fMRIPrep rejects bids_sessions | Set SESSIONS_ANAT="session" in config.sh and rerun 04. bids_combined is not affected. |
 | Rerunning a step | Resubmit it, or `./run_subject.sh SUB [MAGNET] SES --from N --to N`. A later step needs every earlier step to be finished. |
 
-## 9. Which lab code each step uses
+## 9. Updating to a newer version
+
+```bash
+cd cdniproc_wrapper
+git config pull.rebase false      # one-time: silences a harmless "divergent branches" hint
+git pull --autostash              # saves your edits (e.g. to config.sh), pulls, puts them back
+grep -n "YOUR_" config.sh         # prints nothing if your settings survived
+```
+
+Your logs/ contents and your output data are never touched by a pull (logs are git-ignored and outputs live in OUT_BASE). config.sh is the one file you edit, so it is the one that can conflict.
+
+- If the update and your edits changed the same line, git prints CONFLICT and marks the file with <<<<<<<, ======= and >>>>>>>. Open it, keep the lines you want, delete the marker lines and save.
+- To discard your edits and take the repository version: `cp config.sh ~/config.sh.mine && git restore config.sh && git pull`, then re-enter your settings (compare with `diff ~/config.sh.mine config.sh`).
+- Stuck in a half-finished conflict ("Pulling is not possible because you have unmerged files")? `git checkout HEAD -- config.sh` clears it. To reset everything to the GitHub version: `git fetch && git reset --hard origin/main` (discards all local edits to tracked files).
+- New settings arrive with defaults, so an older config.sh keeps working.
+
+## 10. Which lab code each step uses
 
 All from `/projects/standard/faird/shared/code/internal/utilities/cdniproc_v2.0/`, matching the lab WORKFLOW.txt.
 
@@ -230,7 +249,7 @@ All from `/projects/standard/faird/shared/code/internal/utilities/cdniproc_v2.0/
 
 Do not use the *_dev.py scripts or the archive/ folder; they are older or experimental. The lab's combineSessions_gpt3.py is also not used, because it would skip the NORDIC functional files.
 
-## 10. Sign-off for a new study or machine
+## 11. Sign-off for a new study or machine
 
 - [ ] Steps 01–05 completed for one 3T session with no manual edits other than the TSV review.
 - [ ] Two-session subject: ses-combined run numbers run 01…N across both sessions.

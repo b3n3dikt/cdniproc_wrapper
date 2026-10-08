@@ -64,24 +64,30 @@ Also per study: `helpers/label_rules.csv` (series names the automatic labeller m
 Our own code is in `helpers/` (`apply_label_rules.py`, `make_layouts.py`, `IntendedFor_JSBR.py`, the 7T anatomical scripts).
 
 ### Reviewing the TSV (step 01 → 02)
+Step 01 writes one summary TSV per session, one row per DICOM series. Check:
+- `label`: `rest`, `fmap`, `t1w`, ... **Empty means not converted.** (Localizers, scouts and SBRef series are normally left empty.)
+- `MP`: `M` magnitude / `P` phase. NORDIC needs both for each rest run.
+- `PEdir`: `AP`/`PA` for fmaps. `EchoNumber`: the number of echoes in that series.
+- Series names your protocol uses that the labeller misses: add a line to `helpers/label_rules.csv` so it is automatic next time.
+
 **Two ways to review and fix the TSV.** Both end with the same TSV, which is what `tsv_to_json.py` reads in step 02.
 
 1. *The original way:* open `summaries/sub-X_ses-Y.tsv` in LibreOffice (or any editor), fix it, save, run step 02. Nothing else to do.
 2. *The text-file way (no LibreOffice):* step 01 also writes `summaries/sub-X_ses-Y.view.txt`, a short aligned table with the columns that matter, plus a CHECKS section (unlabelled series, rest runs missing a magnitude/phase partner, fmaps without PEdir). Open it in VS Code or `nano` and edit the columns marked `*` (`label, MP, acq, PEdir, inv, nEcho`; an empty cell is a single `.`). Then:
    ```bash
-   python helpers/view_tsv.py status summaries/sub-X_ses-Y.tsv     # preview: lists your edits + re-runs the checks
-   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-txt                 # step 02 copies your edits into the TSV first
+   conda activate py11                                              # view_tsv.py needs pandas (same env as the pipeline)
+   python helpers/view_tsv.py status summaries/sub-X_ses-Y.tsv      # optional preview: lists your edits + re-runs the checks
+   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-txt              # step 02 copies your edits into the TSV first
    ```
+   `status` is optional: `--use-txt` applies the edits by itself. Running `status` first just catches a typo in seconds instead of after the job has waited in the queue.
 
 How the two are kept from fighting each other:
-- The TSV is always the source of truth. `--use-txt` never regenerates it from the text file; it only writes the **cells you changed** in the text file (compared with a hidden snapshot taken when the view was made). Anything changed in the TSV by hand (LibreOffice) is kept.
+- The TSV is always the source of truth. `--use-txt` never regenerates it from the text file; it only writes the **cells you changed** in the text file (compared with a hidden snapshot taken when the text file was made). Anything changed in the TSV by hand (LibreOffice) is kept.
 - Same cell changed to different values in both files: nothing is written and the conflict is listed.
 - Without `--use-txt`, step 02 uses the TSV exactly as before. If the text file contains edits that are not in the TSV, step 02 **stops** and tells you, so edits are never silently ignored.
-- A timestamped backup of the TSV (`*.tsv.bak-…`) is made before any edit is written, and the view is refreshed after step 02 (`tsv_to_json.py` recalculates `runNum`).
-- Rerunning step 01 rebuilds the TSV and the view; the previous ones are kept as `*.prev`.
-- `python helpers/view_tsv.py make <tsv> --force` throws away the text edits and rebuilds the view from the TSV.
-
-One row per DICOM series. Check `label` (`rest`, `fmap`, `t1w`, ... — **empty means not converted**), `MP` (`M` magnitude / `P` phase; NORDIC needs both for each rest run), `PEdir` (AP/PA for fmaps), `EchoNumber`. Edit the cells directly.
+- A timestamped backup of the TSV (`*.tsv.bak-…`) is made before any edit is written, and the text file is refreshed after step 02 (`tsv_to_json.py` recalculates `runNum`).
+- Rerunning step 01 rebuilds the TSV and the text file; the previous ones are kept as `*.prev`.
+- `python helpers/view_tsv.py make <tsv> --force` throws away the text edits and rebuilds the text file from the TSV.
 
 ### Where everything goes (`$OUT_BASE/<MAGNET>/`)
 | Folder | Made by | What |
@@ -99,11 +105,27 @@ One row per DICOM series. Check `label` (`rest`, `fmap`, `t1w`, ... — **empty 
 ### 3T vs 7T
 Only needed if your study has both. The `MAGNET` argument selects it (and names the output sub-folder `3T/` or `7T/`). 7T additionally denoises the MP2RAGE and starts bias-field correction in step 03 (needs `helpers/Bias_field_script_job.m`, not included here), and step 04 copies in the final T1w/T2w and fabricates the AP fieldmap (7T fmaps are PA only).
 
+## Updating to a newer version
+```bash
+cd cdniproc_wrapper
+git config pull.rebase false      # one-time: silences a harmless "divergent branches" hint
+git pull --autostash              # saves your edits (e.g. to config.sh), pulls, puts them back
+grep -n "YOUR_" config.sh         # prints nothing if your settings survived
+```
+Your `logs/` contents and your output data are never touched by a pull (logs are git-ignored and outputs live in `OUT_BASE`). `config.sh` is the one file you edit, so it is the one that can conflict:
+- If the update and your edits changed the same line, git prints `CONFLICT` and marks the file with `<<<<<<<`, `=======`, `>>>>>>>`. Open it, keep the lines you want, delete the marker lines, save.
+- To discard your edits and take the repo's version: `cp config.sh ~/config.sh.mine && git restore config.sh && git pull`, then re-enter your settings (compare with `diff ~/config.sh.mine config.sh`).
+- Stuck in a half-finished conflict (`Pulling is not possible because you have unmerged files`)? `git checkout HEAD -- config.sh` clears it. To reset everything to GitHub's version: `git fetch && git reset --hard origin/main` (discards all local edits to tracked files).
+New settings arrive with defaults, so an older `config.sh` keeps working.
+
 ## Troubleshooting
 | Symptom | Fix |
 |---|---|
 | Job ran but no log files | The log folder did not exist. `mkdir -p logs`. `run_subject.sh` passes absolute log paths so this only bites bare `sbatch` runs from another directory |
 | Job fails immediately | Submitted from a different directory so `config.sh` was not found. `cd` here first |
+| Step 01 finds no DICOMs / wrong S3 URL | The log line `pulling last DICOM of each series: s3://…` shows the path used. Compare with `s3cmd ls s3://<bucket>/…` and fix `S3_BUCKET` / `S3_DICOM_PATH` in `config.sh` |
+| Step 02 stops: "the text view has edits that are NOT in the TSV" | You edited the `.view.txt` but did not pass `--use-txt`. Rerun with `--use-txt`, or discard the text edits with `python helpers/view_tsv.py make <tsv> --force` |
+| `git pull` refuses because of local changes / unmerged files | See "Updating to a newer version" above |
 | `OUT_BASE contains bids/sub-/ses-` | Pick another `OUT_BASE` (the lab NORDIC scripts split paths on those words) |
 | "no `*_part-mag_*` func files" (02) | TSV has no `M`/`P` rows for the rest runs; fix and rerun 02 |
 | `Invalid account or account/partition` in step 03 | The lab NORDIC script hard-codes `-p msismall`. Set `RES_NORDIC_PART` in `config.sh` to a partition your account can use, rerun 03 |

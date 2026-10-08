@@ -21,7 +21,7 @@ mkdir -p logs
 # Step 1 only (--to 1): pull the DICOMs and make one summary TSV per session, so you can review them
 ./run_subject.sh SUB001 3T 01 02 --to 1
 
-#   ...open $OUT_BASE/3T/summaries/sub-SUB001_ses-01.tsv (or its .view.txt), check/fix the label, MP columns...
+#   ...open $OUT_BASE/summaries/sub-SUB001_ses-01.tsv (or its .view.txt), check/fix the label, MP columns...
 
 # Steps 2-5 (--from 2): convert to BIDS, NORDIC, build the datasets, fMRIPrep + XCP-D, chained with --dependency=afterok
 ./run_subject.sh SUB001 3T 01 02 --from 2
@@ -39,7 +39,7 @@ mkdir -p logs
 
 | Section | What you set |
 |---|---|
-| 1. who / where | `SLURM_ACCOUNT`, `S3_BUCKET`, `S3_DICOM_PATH` (where a session's DICOMs are in the bucket, e.g. `mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`), `DEFAULT_MAGNET`, optional `STUDY_NAME`, `OUT_BASE` (scratch output location; must not contain `bids`, `sub-`, `ses-`) |
+| 1. who / where | `SLURM_ACCOUNT`, `S3_BUCKET`, `S3_DICOM_PATH` (where a session's DICOMs are in the bucket, e.g. `mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`), `DEFAULT_MAGNET`, optional `STUDY_NAME`, `OUT_BASE` (output location; must not contain `bids`, `sub-`, `ses-`), `USE_MAGNET_FOLDER` (`0` = outputs straight in `OUT_BASE` (default), `1` = in `OUT_BASE/<MAGNET>/`, for studies with both 3T and 7T) |
 | 2. shared lab code | Paths to `cdniproc_v2.0` etc. Normally unchanged. `NORDIC_SBATCH` only if you need a modified NORDIC script |
 | 3. software | `CONDA_ENV` (needs dcm2bids v3, dcm2niix, pandas, nibabel), module names |
 | 4. pipeline versions | `FMRIPREP_VERSION`, `XCPD_VERSION`, `CIFTI_SPACE` |
@@ -89,7 +89,7 @@ How the two are kept from fighting each other:
 - Rerunning step 01 rebuilds the TSV and the text file; the previous ones are kept as `*.prev`.
 - `python helpers/view_tsv.py make <tsv> --force` throws away the text edits and rebuilds the text file from the TSV.
 
-### Where everything goes (`$OUT_BASE/<MAGNET>/`)
+### Where everything goes (`$OUT_BASE/`, or `$OUT_BASE/<MAGNET>/` if `USE_MAGNET_FOLDER=1`)
 | Folder | Made by | What |
 |---|---|---|
 | `dicoms_last/`, `helper/` | 01 | 1 DICOM per series and its quick conversion (only used for the TSV) |
@@ -103,7 +103,15 @@ How the two are kept from fighting each other:
 | `jobs/`, `logs/` | all | child job IDs, NORDIC and postnordic logs |
 
 ### 3T vs 7T
-Only needed if your study has both. The `MAGNET` argument selects it (and names the output sub-folder `3T/` or `7T/`). 7T additionally denoises the MP2RAGE and starts bias-field correction in step 03 (needs `helpers/Bias_field_script_job.m`, not included here), and step 04 copies in the final T1w/T2w and fabricates the AP fieldmap (7T fmaps are PA only).
+Only needed if your study has both. The `MAGNET` argument selects it (and, if you set `USE_MAGNET_FOLDER=1` in `config.sh`, names the output sub-folder `3T/` or `7T/` so the two field strengths don't mix. The default is no such folder.) 7T additionally denoises the MP2RAGE and starts bias-field correction in step 03 (needs `helpers/Bias_field_script_job.m`, not included here), and step 04 copies in the final T1w/T2w and fabricates the AP fieldmap (7T fmaps are PA only).
+
+### Using it on an existing study folder (e.g. only steps 4–5)
+If the earlier steps were done elsewhere, point the config at that folder and run only the steps you need:
+```bash
+export OUT_BASE="/path/to/study"        # the folder that CONTAINS bids/, e.g. /path/to/study/bids/sub-X/ses-Y/func
+./run_subject.sh SUB001 01 --from 4 --to 5
+```
+(`USE_MAGNET_FOLDER` stays at its default `0`, so there is no `3T/` or `7T/` folder inside it.) The wrapper will add `summaries/`, `jobs/`, `logs/`, `bids_combined/`, `bids_sessions/` and `derivatives/nordic/` inside that folder. Step 4 expects `bids/sub-X/ses-Y/{func,fmap,anat}` with the NORDIC output files next to the originals (the layout step 3 produces); if your NORDIC output already lives in `derivatives/nordic/`, check step 4's `postnordic.py` stage first.
 
 ## Updating to a newer version
 ```bash
@@ -130,7 +138,7 @@ New settings arrive with defaults, so an older `config.sh` keeps working.
 | "no `*_part-mag_*` func files" (02) | TSV has no `M`/`P` rows for the rest runs; fix and rerun 02 |
 | `Invalid account or account/partition` in step 03 | The lab NORDIC script hard-codes `-p msismall`. Set `RES_NORDIC_PART` in `config.sh` to a partition your account can use, rerun 03 |
 | NORDIC `TIMEOUT` | Raise `RES_NORDIC_TIME` in `config.sh` (lab default 1.5 h), rerun 03 then 04 |
-| `NORDIC FAILED` (04) | Read `$OUT_BASE/<MAGNET>/logs/nordic/*.err`, rerun 03 for that session, rerun 04 |
+| `NORDIC FAILED` (04) | Read `$OUT_BASE/logs/nordic/*.err` (`$OUT_BASE/<MAGNET>/logs/…` if `USE_MAGNET_FOLDER=1`), rerun 03 for that session, rerun 04 |
 | BIDS validator/fMRIPrep rejects `bids_sessions` | Set `SESSIONS_ANAT="session"` and rerun 04 (`bids_combined` is unaffected) |
 
 ## Notes

@@ -46,8 +46,9 @@ Everything you may need to change is in `config.sh`, which is divided into numbe
 | DEFAULT_MAGNET | 1 | Field strength used when you leave MAGNET out of a command (3T by default). Set it to 7T if your study is all 7T. Only studies with both 3T and 7T data need to type MAGNET. |
 | S3_BUCKET | 1 | Bucket name only (the part right after s3://). |
 | S3_DICOM_PATH | 1 | Where one session's DICOMs are inside the bucket, as a template; {SUB}, {SES} and {MAGNET} are filled in for each run. Default `dicoms/{SUB}_{SES}/`. For s3://<bucket>/mystudy/3T/dicoms/sub-SUB001_ses-3T1/ use `mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`. If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern. |
+| USE_MAGNET_FOLDER | 1 | 0 (default): outputs go straight in OUT_BASE (e.g. .../processing/bids/). 1: outputs go in OUT_BASE/<MAGNET>/ (e.g. .../processing/3T/bids/); use 1 for a study with both 3T and 7T data so the two do not mix. If you run on an existing folder that already has 3T/bids, set 1; a warning is printed if the setting does not match. |
 | STUDY_NAME | 1 | Optional short study name (e.g. mystudy). It becomes a folder in the default OUT_BASE; leave it empty to skip that folder. |
-| OUT_BASE | 1 | Scratch location for all outputs. Default: /scratch.global/<you>/projects/<STUDY_NAME>/data/processing (the STUDY_NAME folder is skipped if empty), or set it to any path; everything is written under OUT_BASE/<MAGNET>/. It (and STUDY_NAME) must NOT contain the words "bids", "sub-" or "ses-" (the lab NORDIC scripts split paths on them). run_subject.sh refuses to start if it does. |
+| OUT_BASE | 1 | Scratch location for all outputs. Default: /scratch.global/<you>/projects/<STUDY_NAME>/data/processing (the STUDY_NAME folder is skipped if empty), or set it to any path; everything is written directly under OUT_BASE (or OUT_BASE/<MAGNET>/ if USE_MAGNET_FOLDER=1). It (and STUDY_NAME) must NOT contain the words "bids", "sub-" or "ses-" (the lab NORDIC scripts split paths on them). run_subject.sh refuses to start if it does. |
 | CODE_DIR | 1 | Set automatically to the folder config.sh is in. No edit needed. |
 | NORDIC_SBATCH | 2 | Only if you need a modified copy of the lab NORDIC script. Partition, time and memory are set with RES_NORDIC_* instead. |
 | CONDA_ENV | 3 | Environment with dcm2bids v3, dcm2niix, pandas, nibabel. The lab uses py11. |
@@ -113,7 +114,7 @@ When running by hand like this, always do it from the repository folder so the r
 - Runs dcm2niix on them (`tools/convert_helper.py`) into helper/tmp_dcm2bids/.
 - Builds the summary TSV (`nii_init_gpt5.py`) with one row per series and an automatic BIDS label guess, then applies helpers/label_rules.csv.
 
-**Output:** `OUT_BASE/<MAGNET>/summaries/sub-<SUB>_ses-<SES>.tsv`
+**Output:** `OUT_BASE/summaries/sub-<SUB>_ses-<SES>.tsv` (`OUT_BASE/<MAGNET>/summaries/…` if USE_MAGNET_FOLDER=1)
 
 **Two ways to fix the TSV; both end with the same TSV, which is what step 02 reads.** (1) The original way: open the .tsv in LibreOffice or any editor, fix it, save, run step 02. (2) The text-file way, no LibreOffice: step 01 also writes `sub-<SUB>_ses-<SES>.view.txt` next to the TSV, a short aligned table with a CHECKS section (unlabelled series, rest runs missing a magnitude or phase partner, fmaps without PEdir). Edit the columns marked * (label, MP, acq, PEdir, inv, nEcho; write an empty cell as a single dot). Optionally preview with `python helpers/view_tsv.py status <tsv>` (run `conda activate py11` first; it needs pandas; it catches typos in seconds instead of after the job has queued), then run step 02 with `--use-txt` (`./run_subject.sh SUB [MAGNET] SES --from 2 --use-txt`).
 
@@ -144,7 +145,7 @@ When running by hand like this, always do it from the repository folder so the r
 - Those jobs are submitted (`nordicsbatch_new.sh` > runnordic.m). Each writes a *_task-restNORDIC_*_bold.nii.gz next to the originals in bids/.
 - 7T only: helpers/prep_7T_anat.sh denoises the MP2RAGE (LayNii) and submits bias-field-correction jobs.
 
-Step 03 only **submits** the NORDIC jobs and does not wait. Job IDs are saved in jobs/sub-X_ses-Y.jobids and step 04 waits for them. The command list is saved as summaries/nordic_cmd_*.sh. NORDIC errors are in OUT_BASE/<MAGNET>/logs/nordic/*.err.
+Step 03 only **submits** the NORDIC jobs and does not wait. Job IDs are saved in jobs/sub-X_ses-Y.jobids and step 04 waits for them. The command list is saved as summaries/nordic_cmd_*.sh. NORDIC errors are in OUT_BASE/logs/nordic/*.err (OUT_BASE/<MAGNET>/logs/nordic/ if USE_MAGNET_FOLDER=1).
 
 ### 5.4 Step 04: check NORDIC and build the final datasets
 
@@ -180,7 +181,7 @@ The versions and flags come from config.sh (FMRIPREP_VERSION, FMRIPREP_FLAGS, XC
 
 ## 6. Where everything goes
 
-All under `OUT_BASE/<MAGNET>/`
+All under `OUT_BASE/` (or under `OUT_BASE/<MAGNET>/` if USE_MAGNET_FOLDER=1)
 
 | Folder | Step | What |
 |---|---|---|
@@ -196,7 +197,7 @@ All under `OUT_BASE/<MAGNET>/`
 
 ## 7. 3T vs 7T (and studies with only one)
 
-MAGNET only matters for studies that have both 3T and 7T data. Studies with one field strength can leave it out of every command and set DEFAULT_MAGNET in config.sh (3T by default). With both, give it explicitly. It also names the output sub-folder: OUT_BASE/3T/ or OUT_BASE/7T/.
+MAGNET only matters for studies that have both 3T and 7T data. Studies with one field strength can leave it out of every command and set DEFAULT_MAGNET in config.sh (3T by default). With both, give it explicitly. If you set USE_MAGNET_FOLDER=1 in config.sh it also names the output sub-folder (OUT_BASE/3T/ or OUT_BASE/7T/), which keeps the two field strengths apart. The default is no such folder.
 
 - **7T:** step 03 also denoises the MP2RAGE and starts bias-field-correction jobs; step 04 copies the final T1w/T2w in, writes a provisional IntendedFor and fabricates the AP fieldmap. Confirm on the first 7T run: LayNii denoise ran, a *_dir-AP_*_epi file exists in derivatives/nordic/.../fmap, and the final T1w is named ..._run-NN_T1w.
 - **3T:** none of that.
@@ -234,6 +235,15 @@ Your logs/ contents and your output data are never touched by a pull (logs are g
 - To discard your edits and take the repository version: `cp config.sh ~/config.sh.mine && git restore config.sh && git pull`, then re-enter your settings (compare with `diff ~/config.sh.mine config.sh`).
 - Stuck in a half-finished conflict ("Pulling is not possible because you have unmerged files")? `git checkout HEAD -- config.sh` clears it. To reset everything to the GitHub version: `git fetch && git reset --hard origin/main` (discards all local edits to tracked files).
 - New settings arrive with defaults, so an older config.sh keeps working.
+
+### Using it on an existing study folder (for example only steps 4 and 5)
+
+```bash
+export OUT_BASE="/path/to/study"      # the folder that CONTAINS bids/, e.g. /path/to/study/bids/sub-X/ses-Y/func
+./run_subject.sh SUB001 01 --from 4 --to 5
+```
+
+(Set OUT_BASE in config.sh rather than exporting it if you will run more than once. USE_MAGNET_FOLDER stays at its default 0, so there is no 3T/ or 7T/ folder inside.) The wrapper adds summaries/, jobs/, logs/, bids_combined/, bids_sessions/ and derivatives/nordic/ inside that folder. Step 4 expects bids/sub-X/ses-Y/{func,fmap,anat} with the NORDIC output files next to the originals; if your NORDIC output already lives in derivatives/nordic/, check the postnordic.py part of step 4 first.
 
 ## 10. Which lab code each step uses
 

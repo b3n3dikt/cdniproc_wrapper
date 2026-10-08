@@ -26,7 +26,11 @@ set_magnet() {
     for bad in bids sub- ses-; do
         [[ "${OUT_BASE}" == *"${bad}"* ]] && die "OUT_BASE contains '${bad}' - the lab NORDIC scripts split paths on that word. Change OUT_BASE in config.sh."
     done
-    ROOT="${OUT_BASE%/}/${MAGNET}"
+    if [[ "${USE_MAGNET_FOLDER:-0}" == "1" ]]; then ROOT="${OUT_BASE%/}/${MAGNET}"   # OUT_BASE/3T/...
+    else
+        ROOT="${OUT_BASE%/}"                                                          # OUT_BASE/... (no 3T/7T folder)
+        [[ -d "${ROOT}/${MAGNET}/bids" ]] && echo "WARNING: ${ROOT}/${MAGNET}/bids exists but USE_MAGNET_FOLDER is not 1, so outputs go to ${ROOT}/ . If your earlier data is in ${MAGNET}/, set USE_MAGNET_FOLDER=1 in config.sh." >&2
+    fi
     DICOM_LAST_DIR="${ROOT}/dicoms_last"      # one DICOM per series (for the summary TSV)
     DICOM_DIR="${ROOT}/dicoms"                # full DICOMs
     HELPER_DIR="${ROOT}/helper"               # dcm2niix output used to make the TSV

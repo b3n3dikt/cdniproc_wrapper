@@ -21,7 +21,9 @@ export S3_BUCKET="YOUR_S3_BUCKET"           # EDIT: bucket name only (the part r
 #   DICOMs at s3://<bucket>/mystudy/3T/dicoms/sub-SUB001_ses-01/ ->  'mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/'
 # (If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern.)
 export S3_DICOM_PATH='dicoms/{SUB}_{SES}/'
-export STUDY_NAME="${STUDY_NAME:-}"          # OPTIONAL: short study name (e.g. mystudy); becomes a folder in OUT_BASE below. Leave empty to skip it
+# OPTIONAL: a short study name; it becomes a folder in OUT_BASE (below). Leave it empty to skip that folder.
+#   to set it, change the line to e.g.  export STUDY_NAME="mystudy"      (no "bids", "sub-" or "ses-" in the name)
+export STUDY_NAME="${STUDY_NAME:-}"
 
 # Everything is written under  $OUT_BASE/<MAGNET>/   (MAGNET = 3T or 7T)
 #   with STUDY_NAME="mystudy":  /scratch.global/<you>/projects/mystudy/data/processing

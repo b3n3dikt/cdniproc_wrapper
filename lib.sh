@@ -4,6 +4,15 @@
 log()  { echo "[$(date +%H:%M:%S)] $*"; }
 die()  { echo "ERROR: $*" >&2; exit 1; }
 
+# s3_dicom_dir <SUB> <SES>  ->  s3://<bucket>/<S3_DICOM_PATH with {SUB} {SES} {MAGNET} filled in>/
+# (call after set_magnet, so {MAGNET} is known)
+s3_dicom_dir() {
+    local p="${S3_DICOM_PATH}"
+    p="${p//\{SUB\}/$1}"; p="${p//\{SES\}/$2}"; p="${p//\{MAGNET\}/${MAGNET}}"
+    p="${p#/}"; [[ "${p}" == */ ]] || p="${p}/"
+    echo "s3://${S3_BUCKET}/${p}"
+}
+
 # is_magnet <word>  ->  true if the word is 3T or 7T (lets MAGNET be left out of a command)
 is_magnet() { [[ "${1:-}" =~ ^[37][Tt]$ ]]; }
 

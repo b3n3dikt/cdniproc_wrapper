@@ -26,7 +26,7 @@ SUB="$1"; SES="$2"; set_magnet "${3:-${DEFAULT_MAGNET}}"
 TAG="sub-${SUB}_ses-${SES}"
 TSV="${SUMMARY_DIR}/${TAG}.tsv"
 CFG="${SUMMARY_DIR}/${TAG}.json"
-S3_DIR="s3://${S3_BUCKET}/dicoms/${SUB}_${SES}/"
+S3_DIR="$(s3_dicom_dir "${SUB}" "${SES}")"      # built from S3_BUCKET + S3_DICOM_PATH in config.sh
 
 [[ -f "${TSV}" ]] || die "${TSV} not found - run step 01 first"
 load_env

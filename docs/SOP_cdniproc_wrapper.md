@@ -18,7 +18,7 @@ The workflow in short: **pull the folder, edit config.sh, run the steps you want
 | 04 | `04_clean_and_layout.sh` | subject | Wait for NORDIC, check it, 7T extras, build bids_combined and bids_sessions, write IntendedFor. |
 | 05 | `05_fmriprep_xcpd.sh` | subject | fMRIPrep, XCP-D, motion and interpolation conversions, template-matching input folder. |
 
-**Terms.** **SUB** = subject ID without "sub-" (e.g. SUB001). **SES** = session label without "ses-", exactly as in the S3 folder name, two digits (01). **MAGNET** = 3T or 7T; optional, if you leave it out the DEFAULT_MAGNET from config.sh is used (3T unless you change it), so a study with a single field strength can ignore it. S3 folders must be named `s3://<bucket>/dicoms/<SUB>_<SES>/`.
+**Terms.** **SUB** = subject ID without "sub-" (e.g. SUB001). **SES** = session label without "ses-", as it appears in the S3 folder name (numeric sessions two digits, e.g. 01; labels such as 3TD1 or 7T1 are fine). **MAGNET** = 3T or 7T; optional, if you leave it out the DEFAULT_MAGNET from config.sh is used (3T unless you change it), so a study with a single field strength can ignore it. Where the DICOMs sit in S3 is set by S3_BUCKET and S3_DICOM_PATH in config.sh.
 
 ## 2. Getting started
 
@@ -38,14 +38,16 @@ python -c "import pandas, nibabel; print('ok')"
 
 ## 3. Configuring a study: config.sh
 
-Everything you may need to change is in `config.sh`, which is divided into numbered sections. config.sh ships with placeholders (YOUR_SLURM_ACCOUNT, YOUR_S3_BUCKET, YOUR_STUDY in OUT_BASE) and run_subject.sh will not run until they are replaced. Other defaults are the settings the original study used.
+Everything you may need to change is in `config.sh`, which is divided into numbered sections. config.sh ships with placeholders (YOUR_SLURM_ACCOUNT, YOUR_S3_BUCKET) and run_subject.sh will not run until they are replaced. Other defaults are the settings the original study used.
 
 | Setting | Section | What to set |
 |---|---|---|
 | SLURM_ACCOUNT | 1 | Your MSI group/account. run_subject.sh passes it to every job, so the scripts need no edits (they no longer contain an account). |
 | DEFAULT_MAGNET | 1 | Field strength used when you leave MAGNET out of a command (3T by default). Set it to 7T if your study is all 7T. Only studies with both 3T and 7T data need to type MAGNET. |
-| S3_BUCKET | 1 | Bucket that holds the study DICOMs as dicoms/<SUB>_<SES>/. |
-| OUT_BASE | 1 | Scratch location for all outputs (replace YOUR_STUDY with your study name); everything is written under OUT_BASE/<MAGNET>/. It must NOT contain the words "bids", "sub-" or "ses-" (the lab NORDIC scripts split paths on them). run_subject.sh refuses to start if it does. |
+| S3_BUCKET | 1 | Bucket name only (the part right after s3://). |
+| S3_DICOM_PATH | 1 | Where one session's DICOMs are inside the bucket, as a template; {SUB}, {SES} and {MAGNET} are filled in for each run. Default `dicoms/{SUB}_{SES}/`. For s3://<bucket>/pfm3t7t/3T/dicoms/sub-PFM3T7T01_ses-3TD1/ use `pfm3t7t/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`. If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern. |
+| STUDY_NAME | 1 | Optional short study name (e.g. mystudy). It becomes a folder in the default OUT_BASE; leave it empty to skip that folder. |
+| OUT_BASE | 1 | Scratch location for all outputs. Default: /scratch.global/<you>/projects/<STUDY_NAME>/data/processing (the STUDY_NAME folder is skipped if empty), or set it to any path; everything is written under OUT_BASE/<MAGNET>/. It (and STUDY_NAME) must NOT contain the words "bids", "sub-" or "ses-" (the lab NORDIC scripts split paths on them). run_subject.sh refuses to start if it does. |
 | CODE_DIR | 1 | Set automatically to the folder config.sh is in. No edit needed. |
 | NORDIC_SBATCH | 2 | Only if you need a modified copy of the lab NORDIC script. Partition, time and memory are set with RES_NORDIC_* instead. |
 | CONDA_ENV | 3 | Environment with dcm2bids v3, dcm2niix, pandas, nibabel. The lab uses py11. |

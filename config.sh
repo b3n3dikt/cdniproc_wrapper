@@ -14,12 +14,20 @@
 export SLURM_ACCOUNT="YOUR_SLURM_ACCOUNT"    # EDIT: your MSI account. run_subject.sh gives it to every job; child jobs (NORDIC, bias-field) inherit it
 export SBATCH_ACCOUNT="${SLURM_ACCOUNT}"     # so sbatch calls made inside jobs use it too
 export DEFAULT_MAGNET="${DEFAULT_MAGNET:-3T}"   # used when you leave MAGNET out of a command. Most studies have only one field strength: set it to 7T if that is yours
-export S3_BUCKET="YOUR_S3_BUCKET"           # EDIT: DICOMs live at s3://$S3_BUCKET/dicoms/<SUB>_<SES>/
+export S3_BUCKET="YOUR_S3_BUCKET"           # EDIT: bucket name only (the part right after s3://)
+# Where one session's DICOMs are inside the bucket. {SUB}, {SES} and {MAGNET} are filled in for each run.
+#   default (DICOMs at s3://<bucket>/dicoms/SUB001_01/):        "dicoms/{SUB}_{SES}/"
+#   e.g. s3://<bucket>/pfm3t7t/3T/dicoms/sub-PFM3T7T01_ses-3TD1/:  "pfm3t7t/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/"
+# (If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern.)
+export S3_DICOM_PATH='dicoms/{SUB}_{SES}/'
+export STUDY_NAME="${STUDY_NAME:-}"          # OPTIONAL: short study name (e.g. mystudy); becomes a folder in OUT_BASE below. Leave empty to skip it
 
-# EDIT the study name in OUT_BASE. Everything is written under  $OUT_BASE/<MAGNET>/   (MAGNET = 3T or 7T)
-# Keep the word "bids" and the strings "sub-" / "ses-" OUT of this path - the lab's
-# NORDIC scripts find their folders by splitting the path on those words.
-export OUT_BASE="${OUT_BASE:-/scratch.global/${USER}/projects/YOUR_STUDY/data/processing}"
+# Everything is written under  $OUT_BASE/<MAGNET>/   (MAGNET = 3T or 7T)
+#   with STUDY_NAME="mystudy":  /scratch.global/<you>/projects/mystudy/data/processing
+#   with STUDY_NAME="":         /scratch.global/<you>/projects/data/processing
+# Or set OUT_BASE yourself to any location. Keep the word "bids" and the strings "sub-" / "ses-" OUT of
+# this path (and of STUDY_NAME) - the lab's NORDIC scripts find their folders by splitting the path on those words.
+export OUT_BASE="${OUT_BASE:-/scratch.global/${USER}/projects/${STUDY_NAME:+${STUDY_NAME}/}data/processing}"
 
 # ---- 1b. our code --------------------------------------------------------------
 export CODE_DIR="${CODE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"   # = the folder this file is in; no edit needed

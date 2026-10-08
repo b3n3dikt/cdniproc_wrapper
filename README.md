@@ -32,14 +32,14 @@ mkdir -p logs
 
 - `SUB` = subject ID without `sub-`.
 - `MAGNET` = `3T` or `7T`. **Optional.** Only studies with both field strengths need to type it. Everyone else leaves it out and, if their study is not 3T, sets `DEFAULT_MAGNET="7T"` once in `config.sh`.
-- `SES` = one or more session labels without `ses-`, exactly as in the S3 folder `s3://<bucket>/dicoms/<SUB>_<SES>/` (two digits: `01`).
+- `SES` = one or more session labels without `ses-`, as they appear in your S3 folder names (see `S3_DICOM_PATH` in `config.sh`). Numeric sessions should be two digits (`01`); labels like `3TD1` or `7T1` are fine as they are.
 - `--from N` / `--to N` pick steps 1–5. Always run from this folder.
 
 ## The one file you edit: `config.sh`
 
 | Section | What you set |
 |---|---|
-| 1. who / where | `SLURM_ACCOUNT`, `S3_BUCKET`, `DEFAULT_MAGNET`, `OUT_BASE` (scratch output location; must not contain `bids`, `sub-`, `ses-`) |
+| 1. who / where | `SLURM_ACCOUNT`, `S3_BUCKET`, `S3_DICOM_PATH` (where a session's DICOMs are in the bucket, e.g. `pfm3t7t/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`), `DEFAULT_MAGNET`, optional `STUDY_NAME`, `OUT_BASE` (scratch output location; must not contain `bids`, `sub-`, `ses-`) |
 | 2. shared lab code | Paths to `cdniproc_v2.0` etc. Normally unchanged. `NORDIC_SBATCH` only if you need a modified NORDIC script |
 | 3. software | `CONDA_ENV` (needs dcm2bids v3, dcm2niix, pandas, nibabel), module names |
 | 4. pipeline versions | `FMRIPREP_VERSION`, `XCPD_VERSION`, `CIFTI_SPACE` |
@@ -114,4 +114,4 @@ Only needed if your study has both. The `MAGNET` argument selects it (and names 
 ## Notes
 - The `*_dev.py` scripts and `archive/` in `cdniproc_v2.0` are older/experimental and are not used. The lab's `combineSessions_gpt3.py` is not used either: it would skip the NORDIC functional files.
 - Not covered yet: PCM / template matching (the lab's `submit_PCM.sh`, `submit_TM.sh`).
-- `config.sh` ships with placeholders (`YOUR_SLURM_ACCOUNT`, `YOUR_S3_BUCKET`, `YOUR_STUDY`). `run_subject.sh` refuses to run until you replace them.
+- `config.sh` ships with placeholders (`YOUR_SLURM_ACCOUNT`, `YOUR_S3_BUCKET`). `run_subject.sh` refuses to run until you replace them. `STUDY_NAME` is optional and only names a folder inside `OUT_BASE`.

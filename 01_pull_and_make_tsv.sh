@@ -14,7 +14,7 @@
 #
 # What it does
 #   1. s3_get_last_dicoms.sh   copies the LAST DICOM of every series (a tiny "mini" copy of the
-#                              session) from s3://<bucket>/dicoms/<SUB>_<SES>/
+#                              session) from S3_DIR (S3_BUCKET + S3_DICOM_PATH in config.sh)
 #   2. convert_helper.py       dcm2niix on those -> one small nii.gz + json per series
 #   3. nii_init_gpt5.py        reads those jsons -> summaries/sub-<SUB>_ses-<SES>.tsv
 #                              (one row per series, with an automatic BIDS label guess)
@@ -33,7 +33,7 @@ source "${CODE_DIR}/config.sh"; source "${CODE_DIR}/lib.sh"
 SUB="$1"; SES="$2"; set_magnet "${3:-${DEFAULT_MAGNET}}"
 TAG="sub-${SUB}_ses-${SES}"
 TSV="${SUMMARY_DIR}/${TAG}.tsv"
-S3_DIR="s3://${S3_BUCKET}/dicoms/${SUB}_${SES}/"
+S3_DIR="$(s3_dicom_dir "${SUB}" "${SES}")"      # built from S3_BUCKET + S3_DICOM_PATH in config.sh
 
 load_env
 need_cmd python dcm2niix fslinfo

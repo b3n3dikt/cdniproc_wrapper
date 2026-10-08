@@ -15,9 +15,10 @@ export SLURM_ACCOUNT="YOUR_SLURM_ACCOUNT"    # EDIT: your MSI account. run_subje
 export SBATCH_ACCOUNT="${SLURM_ACCOUNT}"     # so sbatch calls made inside jobs use it too
 export DEFAULT_MAGNET="${DEFAULT_MAGNET:-3T}"   # used when you leave MAGNET out of a command. Most studies have only one field strength: set it to 7T if that is yours
 export S3_BUCKET="YOUR_S3_BUCKET"           # EDIT: bucket name only (the part right after s3://)
-# Where one session's DICOMs are inside the bucket. {SUB}, {SES} and {MAGNET} are filled in for each run.
-#   default (DICOMs at s3://<bucket>/dicoms/SUB001_01/):        "dicoms/{SUB}_{SES}/"
-#   e.g. s3://<bucket>/pfm3t7t/3T/dicoms/sub-PFM3T7T01_ses-3TD1/:  "pfm3t7t/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/"
+# Where one session's DICOMs are inside the bucket. {SUB}, {SES} and {MAGNET} are filled in for each run
+# ({SUB} = subject ID, {SES} = session label, {MAGNET} = 3T or 7T).
+#   DICOMs at s3://<bucket>/dicoms/SUB001_01/                    ->  'dicoms/{SUB}_{SES}/'              (default)
+#   DICOMs at s3://<bucket>/mystudy/3T/dicoms/sub-SUB001_ses-01/ ->  'mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/'
 # (If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern.)
 export S3_DICOM_PATH='dicoms/{SUB}_{SES}/'
 export STUDY_NAME="${STUDY_NAME:-}"          # OPTIONAL: short study name (e.g. mystudy); becomes a folder in OUT_BASE below. Leave empty to skip it

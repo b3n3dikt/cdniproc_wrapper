@@ -958,7 +958,7 @@ if __name__ == "__main__":
 # geometry/readout. Robust to being given --sub/--ses as labels (sub-01, ses-02) or as full paths.
 
 # IntendedFor entries are written WITHOUT the leading subject folder, e.g.:
-#   "ses-7T2/func/sub-PFM3T7T01_ses-7T2_task-restNORDIC_run-04_echo-1_bold.nii.gz"
+#   "ses-7T2/func/sub-SUB001_ses-7T2_task-restNORDIC_run-04_echo-1_bold.nii.gz"
 
 # Usage examples:
 #   # dry run
@@ -1309,9 +1309,9 @@ if __name__ == "__main__":
 
 # Usage examples
 #   python IntendedFor_JSBR.py /path/to/BIDSroot
-#   python IntendedFor_JSBR.py --sub PFM3T7T01 /path/to/BIDSroot
+#   python IntendedFor_JSBR.py --sub SUB001 /path/to/BIDSroot
 #   python IntendedFor_JSBR.py --sess 7T2 /path/to/BIDSroot
-#   python IntendedFor_JSBR.py --ses /.../sub-PFM3T7T01/ses-7T2 /path/to/BIDSroot
+#   python IntendedFor_JSBR.py --ses /.../sub-SUB001/ses-7T2 /path/to/BIDSroot
 # """
 
 # from __future__ import annotations
@@ -1711,7 +1711,7 @@ if __name__ == "__main__":
 #                   ses_path_hint: Optional[str] = None) -> List[Path]:
 #     """
 #     Collect session paths under root honoring optional filters or a session path hint.
-#     - sub_filter: list of 'PFM3T7T01' style names (without 'sub-')
+#     - sub_filter: list of 'SUB001' style names (without 'sub-')
 #     - ses_filter: list of '7T2' style names (without 'ses-')
 #     - ses_path_hint: a path like '/.../sub-XXX/ses-YYY' to restrict to one session
 #     """
@@ -1797,7 +1797,7 @@ if __name__ == "__main__":
 # def main():
 #     ap = argparse.ArgumentParser(description="Populate IntendedFor for reverse-PE EPIs.")
 #     ap.add_argument("root", type=Path, help="BIDS root directory")
-#     ap.add_argument("--sub", "--subs", dest="subs", nargs="+", help="Subject(s) without 'sub-' prefix, e.g. PFM3T7T01")
+#     ap.add_argument("--sub", "--subs", dest="subs", nargs="+", help="Subject(s) without 'sub-' prefix, e.g. SUB001")
 #     ap.add_argument("--ses", "--sess", dest="sess", nargs="*", help="Session(s) without 'ses-' prefix, or a single PATH to a specific ses dir")
 #     ap.add_argument("--dry-run", action="store_true", help="Do not write files, just show planned changes")
 #     args = ap.parse_args()

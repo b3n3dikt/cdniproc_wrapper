@@ -17,8 +17,8 @@ set -Eeuo pipefail
 #   - Cleans previously staged T1w/T2w (nii/json) in the destination before copying.
 #
 # Examples:
-#   cleanup_7T_anat.sh PFM3T7T01 7T1 --src-base /raw/bids --dst-base /proc/7T/bids
-#   cleanup_7T_anat.sh PFM3T7T01    --src-base /raw/bids --dst-base /proc/7T/bids
+#   cleanup_7T_anat.sh SUB001 7T1 --src-base /raw/bids --dst-base /proc/7T/bids
+#   cleanup_7T_anat.sh SUB001    --src-base /raw/bids --dst-base /proc/7T/bids
 
 show_usage() {
   sed -n '1,80p' "$0" | sed 's/^# \{0,1\}//'
@@ -185,7 +185,7 @@ echo "Done."
 # #   cleanup_7T_anat.sh <rawbids_dir> <SUB> <SES> <PARENT>
 # #
 # # Example:
-# #   cleanup_7T_anat.sh /scratch/.../bids PFM3T7T01 7T1 /scratch/.../processing/7T
+# #   cleanup_7T_anat.sh /scratch/.../bids SUB001 7T1 /scratch/.../processing/7T
 
 # rawbids_dir=${1:?rawbids_dir required}
 # SUB=${2:?SUB required}

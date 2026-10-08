@@ -157,7 +157,7 @@ def main():
         description="Create fake dir-AP EPI files whenever only dir-PA exists."
     )
     parser.add_argument("work_dir", help="BIDS root directory (e.g. /path/7T/bids)")
-    parser.add_argument("SUBID", help="Subject ID (e.g. PFM3T7T01 or sub-PFM3T7T01)")
+    parser.add_argument("SUBID", help="Subject ID (e.g. SUB001 or sub-SUB001)")
     parser.add_argument("SES", nargs="?", help="Optional session (e.g. 7T2 or ses-7T2). If omitted, run all sessions.")
     parser.add_argument("-v", "--verbose", action="store_true")
     args = parser.parse_args()

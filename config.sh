@@ -5,6 +5,7 @@
 #
 # Sections:  1 who/where   2 lab code   3 software   4 pipeline versions
 #            5 SLURM resources per step   6 fMRIPrep + XCP-D flags   7 choices
+# (where outputs go - OUT_BASE, DERIV_BASE, WORK_BASE - is all in section 1)
 # Resources (section 5) and the account are applied by run_subject.sh. If you run a
 # step with a bare `sbatch 0X_*.sh` instead, the defaults written in that script's
 # #SBATCH header are used.
@@ -36,6 +37,14 @@ export OUT_BASE="${OUT_BASE:-/scratch.global/${USER}/projects/${STUDY_NAME:+${ST
 #              Use 1 for a study with BOTH 3T and 7T data, so the two do not mix.
 #              (MAGNET is still used for the 7T-only steps and for {MAGNET} in S3_DICOM_PATH either way.)
 export USE_MAGNET_FOLDER="${USE_MAGNET_FOLDER:-0}"
+
+# Where step 05 (fMRIPrep + XCP-D) writes. Leave both EMPTY for the default: <outputs above>/derivatives.
+# The work folders are HUGE and only needed while running, so if OUT_BASE is on a place with a small quota
+# (e.g. /projects) keep it there and send just the work folders to scratch:
+#   export WORK_BASE="/scratch.global/<you>/projects/mystudy/work"      # fMRIPrep/XCP-D work folders only
+#   export DERIV_BASE="/some/other/derivatives"                         # also move the fMRIPrep/XCP-D results
+export DERIV_BASE="${DERIV_BASE:-}"
+export WORK_BASE="${WORK_BASE:-}"
 
 # ---- 1b. our code --------------------------------------------------------------
 export CODE_DIR="${CODE_DIR:-$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)}"   # = the folder this file is in; no edit needed
@@ -87,14 +96,6 @@ RES_NORDIC_PART="ag2tb,agsmall,aglarge"
 RES_NORDIC_CPUS=2
 RES_NORDIC_MEM=80G
 RES_NORDIC_TIME=1:30:00
-
-# Where step 05 puts its results and its work folders. Leave both empty for the default: <outputs>/derivatives.
-# The work folders are HUGE and only needed while running. If your data live somewhere with a small quota
-# (e.g. /projects), keep OUT_BASE there and put the work folders on scratch:
-#   export WORK_BASE="/scratch.global/<you>/projects/mystudy/work"      # fMRIPrep/XCP-D work dirs only
-#   export DERIV_BASE="/some/other/derivatives"                         # also move the fMRIPrep/XCP-D results
-export DERIV_BASE="${DERIV_BASE:-}"
-export WORK_BASE="${WORK_BASE:-}"
 
 # ---- 6. fMRIPrep and XCP-D flags (step 05) ----------------------------------
 # One flag (and its value) per line. Defaults = the lab's abcd-mode settings.

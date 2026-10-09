@@ -44,6 +44,7 @@ mkdir -p logs
 | 3. software | `CONDA_ENV` (needs dcm2bids v3, dcm2niix, pandas, nibabel), module names |
 | 4. pipeline versions | `FMRIPREP_VERSION`, `XCPD_VERSION`, `CIFTI_SPACE` |
 | 5. SLURM resources | `RES_0N_CPUS / MEM / TIME / PART` for each step script, and `RES_NORDIC_*` for the NORDIC jobs step 03 submits (partition, time, memory) |
+| 5b. where step 05 writes | optional `DERIV_BASE` (fMRIPrep/XCP-D results) and `WORK_BASE` (their huge work folders). Empty = `<outputs>/derivatives`. Use `WORK_BASE` to keep the data on `/projects` and the work folders on scratch |
 | 6. fMRIPrep + XCP-D flags | `FMRIPREP_FLAGS` and `XCPD_FLAGS` arrays (defaults = the lab's abcd-mode settings) |
 | 7. choices | `INTENDEDFOR_METHOD` (`jsbr` or `lab`), `SESSIONS_ANAT` |
 
@@ -58,7 +59,7 @@ Also per study: `helpers/label_rules.csv` (series names the automatic labeller m
 | 01 | `01_pull_and_make_tsv.sh` | session | Last DICOM of each series from S3 → dcm2niix → summary TSV you review | `tools/convert_helper.py`, `nii_init_gpt5.py` |
 | 02 | `02_convert_to_bids.sh` | session | TSV → dcm2bids config, full DICOM sync, dcm2bids | `tsv_to_json.py`, `dcm2bids` |
 | 03 | `03_run_nordic.sh` | session | Writes and submits NORDIC jobs (mag+phase → denoised). 7T: MP2RAGE denoise + bias-field jobs | `tools/make_nordic_cmds.py`, `nordicsbatch_new.sh`, `runnordic.m` |
-| 04 | `04_clean_and_layout.sh` | subject | Waits for NORDIC, checks it, builds `bids_combined/` and `bids_sessions/`, writes IntendedFor | `tools/postnordic.py`, optionally `tools/IntendedFor_new.py` |
+| 04 | `04_clean_and_layout.sh` | subject | Waits for NORDIC, checks it, builds `bids_combined/` and `bids_sessions/` (**one session: skipped**, fMRIPrep reads `derivatives/nordic` directly), writes IntendedFor | `tools/postnordic.py`, optionally `tools/IntendedFor_new.py` |
 | 05 | `05_fmriprep_xcpd.sh` | subject | fMRIPrep, XCP-D, motion/interpolation conversions, template-matching input | containers, `tools/copy_files_to_temp.py`, `xcpd2dcanmotion` |
 
 Our own code is in `helpers/` (`apply_label_rules.py`, `make_layouts.py`, `IntendedFor_JSBR.py`, the 7T anatomical scripts).
@@ -97,10 +98,15 @@ How the two are kept from fighting each other:
 | `dicoms/` | 02 | full DICOMs |
 | `bids/` | 02, 03 | raw BIDS (mag + phase + NORDIC output next to them) |
 | `derivatives/nordic/` | 04 | NORDIC-cleaned sessions |
-| `bids_combined/` | 04 | fMRIPrep input: `sub-X/ses-combined/{anat,func,fmap}` |
+| `bids_combined/` | 04 | fMRIPrep input for subjects with several sessions: `sub-X/ses-combined/{anat,func,fmap}`. Not made for a single session |
 | `bids_sessions/` | 04 | `sub-X/anat` + `sub-X/ses-N/{func,fmap}` |
 | `derivatives/91k_fmriprep_*`, `91k_xcpd_*` | 05 | pipeline outputs; XCP-D is the deliverable |
 | `jobs/`, `logs/` | all | child job IDs, NORDIC and postnordic logs |
+
+### One session vs several
+- **Several sessions:** step 4 builds `bids_combined/` (all sessions merged into `ses-combined`, runs renumbered) and `bids_sessions/`, and step 5 reads `bids_combined/`.
+- **One session:** there is nothing to combine, so step 4 skips both, writes IntendedFor straight into `derivatives/nordic/sub-X/ses-Y/`, and step 5 reads `derivatives/nordic` with the real session name kept (this is also what the lab's own workflow does). Set `SKIP_LAYOUTS_FOR_ONE_SESSION=0` in `config.sh` to always build both.
+- `--layout auto` (default) picks between these for you. Override with `--layout nordic`, `combined` or `sessions`: `./run_subject.sh SUB001 01 --from 5 --layout nordic`.
 
 ### 3T vs 7T
 Only needed if your study has both. The `MAGNET` argument selects it (and, if you set `USE_MAGNET_FOLDER=1` in `config.sh`, names the output sub-folder `3T/` or `7T/` so the two field strengths don't mix. The default is no such folder.) 7T additionally denoises the MP2RAGE and starts bias-field correction in step 03 (needs `helpers/Bias_field_script_job.m`, not included here), and step 04 copies in the final T1w/T2w and fabricates the AP fieldmap (7T fmaps are PA only).

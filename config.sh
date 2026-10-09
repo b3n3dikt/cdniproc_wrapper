@@ -57,12 +57,12 @@ export FSL_MODULE="fsl/5.0.10"
 export MATLAB_MODULE="matlab/R2019a"
 export LAYNII_DIR="/projects/standard/bart/shared/projects/7Tpiloting/anat_testing/scripts/LayNii"   # 7T only (LN_MP2RAGE_DNOISE)
 
-# ---- 4. pipelines (kept at the versions this study already used) --------------
+# ---- 4. pipelines ---------------------------------------------------------------
 # Containers are read from $PIPELINES_DIR/fmriprep/fmriprep_<ver>.sif and xcp_d/xcp_d_<ver>.sif
 # - `ls $PIPELINES_DIR/fmriprep $PIPELINES_DIR/xcp_d` shows what is installed.
 # Pick the versions once for the whole study and do not change them part-way.
-export FMRIPREP_VERSION="25.1.3"             # newest on server per Module 9: 25.2.2
-export XCPD_VERSION="0.11.1"                 # newest on server per Module 10: 26.2.0rc1
+export FMRIPREP_VERSION="25.2.6"
+export XCPD_VERSION="26.2.0"
 export CIFTI_SPACE="91k"
 export PIPELINES_DIR="/projects/standard/faird/shared/code/external/pipelines"
 export FS_LICENSE="/projects/standard/faird/shared/code/external/utilities/freesurfer_license/license.txt"
@@ -88,8 +88,16 @@ RES_NORDIC_CPUS=2
 RES_NORDIC_MEM=80G
 RES_NORDIC_TIME=1:30:00
 
+# Where step 05 puts its results and its work folders. Leave both empty for the default: <outputs>/derivatives.
+# The work folders are HUGE and only needed while running. If your data live somewhere with a small quota
+# (e.g. /projects), keep OUT_BASE there and put the work folders on scratch:
+#   export WORK_BASE="/scratch.global/<you>/projects/mystudy/work"      # fMRIPrep/XCP-D work dirs only
+#   export DERIV_BASE="/some/other/derivatives"                         # also move the fMRIPrep/XCP-D results
+export DERIV_BASE="${DERIV_BASE:-}"
+export WORK_BASE="${WORK_BASE:-}"
+
 # ---- 6. fMRIPrep and XCP-D flags (step 05) ----------------------------------
-# One flag (and its value) per line. Defaults = the lab's abcd-mode settings that this study used.
+# One flag (and its value) per line. Defaults = the lab's abcd-mode settings.
 # Step 05 always adds these itself, do NOT list them here: --fs-license-file, --participant-label,
 # -w (work dir) and the input/output folders.
 # The thread counts below follow the CPUs you request in section 5 so the two stay in sync.
@@ -97,10 +105,12 @@ FMRIPREP_FLAGS=(
     --output-spaces MNI152NLin6Asym:res-2:res-native
     --project-goodvoxels
     --use-syn-sdc
+    --force syn-sdc
     --skull-strip-fixed-seed
     --random-seed 1
     --omp-nthreads 3
     --cifti-output "${CIFTI_SPACE}"
+    --bold-coreg-level session
     --bold2anat-init auto
     -vv
 )
@@ -134,6 +144,10 @@ export INTENDEDFOR_METHOD="jsbr"
 # or VS Code, the original way). 1 = also copy your edits from summaries/<sub>_<ses>.view.txt into the TSV first.
 # Normally you set this per run with  ./run_subject.sh ... --use-txt  instead of here.
 export USE_TXT_EDITS="${USE_TXT_EDITS:-0}"
+
+# One session only: skip building bids_combined / bids_sessions (nothing to combine) and let fMRIPrep read
+# derivatives/nordic directly. 1 = skip (default), 0 = always build both.
+export SKIP_LAYOUTS_FOR_ONE_SESSION="${SKIP_LAYOUTS_FOR_ONE_SESSION:-1}"
 
 # Where anatomicals go in bids_sessions:  subject = sub-X/anat   |   session = sub-X/ses-N/anat
 export SESSIONS_ANAT="subject"

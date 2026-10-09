@@ -3,7 +3,7 @@
 # Run it on the login node (it only submits jobs; it is not itself an sbatch script).
 #
 # Usage:
-#   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout combined|sessions] [--use-txt]
+#   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout auto|nordic|combined|sessions] [--use-txt]
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
@@ -28,7 +28,7 @@ usage() { awk 'NR>1 && /^set -E/{exit} NR>1{print}' "$0"; }
 CODE_DIR="$(cd "$(dirname "$0")" && pwd)"; export CODE_DIR
 source "${CODE_DIR}/config.sh"; source "${CODE_DIR}/lib.sh"
 
-FROM=1; TO=5; LAYOUT=combined; POS=()
+FROM=1; TO=5; LAYOUT=auto; POS=()
 while (( $# )); do
     case "$1" in
         --from)   FROM="$2"; shift 2 ;;

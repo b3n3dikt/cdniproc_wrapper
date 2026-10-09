@@ -54,8 +54,10 @@ Everything you may need to change is in `config.sh`, which is divided into numbe
 | CONDA_ENV | 3 | Environment with dcm2bids v3, dcm2niix, pandas, nibabel. The lab uses py11. |
 | FMRIPREP_VERSION, XCPD_VERSION, CIFTI_SPACE | 4 | Container versions (`ls $PIPELINES_DIR/fmriprep $PIPELINES_DIR/xcp_d` shows what is installed). Pin them for the whole study and do not change them part-way. |
 | RES_01 … RES_05 | 5 | CPUS, MEM, TIME and PART (partition) for each step script, e.g. `RES_05_MEM=650G`. Defaults are what the study used. Applied by run_subject.sh. |
+| DERIV_BASE, WORK_BASE | 5 | Optional. Where step 05 writes the fMRIPrep / XCP-D results (DERIV_BASE) and their huge work folders (WORK_BASE). Empty = OUT_BASE/derivatives. If the data live on /projects with a small quota, keep OUT_BASE there and set WORK_BASE to a scratch path. |
 | FMRIPREP_FLAGS, XCPD_FLAGS | 6 | The fMRIPrep and XCP-D options, one flag per line. Defaults are the lab's abcd-mode settings. Add, remove or change flags here. Step 05 itself always adds --fs-license-file, --participant-label, -w and the input/output folders, so do not list those. The default --nprocs follows RES_05_CPUS. |
 | INTENDEDFOR_METHOD | 7 | jsbr (our script, shim + timing aware) or lab (IntendedFor_new.py, shim matching). Keep jsbr unless you have a reason. |
+| SKIP_LAYOUTS_FOR_ONE_SESSION | 7 | 1 (default): a subject with one session skips bids_combined / bids_sessions and fMRIPrep reads derivatives/nordic. 0: always build both. |
 | SESSIONS_ANAT | 7 | subject (anat at sub-X/anat in bids_sessions) or session (anat inside each ses-*). Use session if the BIDS validator or fMRIPrep objects. |
 
 Two study-specific files outside config.sh: `helpers/label_rules.csv` (series names in your protocol that the automatic labeller does not recognise; one line each: magnet, lookfor, label such as rest or fmap; anything left unlabelled is not converted) and `helpers/dataset_description.json` (study Name, Authors, Funding, License).
@@ -91,7 +93,7 @@ cd cdniproc_wrapper
 ./run_subject.sh SUB001 01 02 --from 2
 ```
 
-Options: `--from N` and `--to N` choose which steps to submit (1–5); `--layout combined|sessions` chooses the fMRIPrep input (default combined). Watch jobs with `squeue -u $USER`. Logs are in the repository's logs/ folder.
+Options: `--from N` and `--to N` choose which steps to submit (1–5); `--layout auto|nordic|combined|sessions` chooses the fMRIPrep input (default auto: bids_combined for several sessions, derivatives/nordic for one; see section 5.4). Watch jobs with `squeue -u $USER`. Logs are in the repository's logs/ folder.
 
 ### 4.2 One step at a time
 
@@ -154,7 +156,8 @@ Run once per subject, after every session has finished steps 02 and 03.
 - Waits for the NORDIC and bias-field jobs.
 - `postnordic.py` verifies each magnitude run has a NORDIC run and moves the NORDIC files to derivatives/nordic/sub-X/ses-Y/. It stops with "NORDIC FAILED for session(s) ..." if any run is missing.
 - 7T only: copies in the final T1w/T2w, writes a provisional IntendedFor, and makes a fake forward-PE (AP) fieldmap from the functional data (7T fieldmaps are PA only).
-- `make_layouts.py` builds two datasets from derivatives/nordic:
+- **One session:** there is nothing to combine, so the next two bullets are skipped. IntendedFor is written straight into derivatives/nordic/sub-X/ses-Y/ and step 5 reads derivatives/nordic with the real session name kept (as in the lab workflow). Set SKIP_LAYOUTS_FOR_ONE_SESSION=0 in config.sh to always build both.
+- **Several sessions:** `make_layouts.py` builds two datasets from derivatives/nordic:
   - `bids_combined/`  sub-X/ses-combined/{anat,func,fmap}, runs renumbered 01…N across sessions. This is the fMRIPrep input.
   - `bids_sessions/`  sub-X/anat plus sub-X/ses-N/{func,fmap}, sessions kept separate.
 - Writes IntendedFor into the fieldmap JSONs of both datasets (file names change when sessions are combined or split, so this is redone).
@@ -172,7 +175,7 @@ head -30 summaries/layout_map_sub-SUB.tsv                               # old na
 
 ### 5.5 Step 05: fMRIPrep and XCP-D
 
-- Runs fMRIPrep (singularity container) on bids_combined, then XCP-D in abcd mode with the lab's standard filter settings.
+- Runs fMRIPrep (singularity container) on bids_combined (several sessions) or derivatives/nordic (one session; --layout auto picks), then XCP-D in abcd mode with the lab's standard filter settings.
 - Converts motion .hdf5 to .tsv and .mat, interpolates high-motion frames in the denoised CIFTI, and creates the folder the template-matching step reads.
 
 **Final output:** `derivatives/91k_xcpd_<version>/output/<SUB>/`. fMRIPrep output is in derivatives/91k_fmriprep_<version>/. By default step 05 requests 24 CPUs, 650 GB and 50 h (RES_05_* in config.sh).
@@ -190,7 +193,7 @@ All under `OUT_BASE/` (or under `OUT_BASE/<MAGNET>/` if USE_MAGNET_FOLDER=1)
 | dicoms/ | 02 | Full DICOMs. |
 | bids/ | 02, 03 | Raw BIDS: mag + phase, and the NORDIC output next to them. |
 | derivatives/nordic/ | 04 | NORDIC-cleaned sessions (no phase, no noise volumes). |
-| bids_combined/ | 04 | fMRIPrep input. |
+| bids_combined/ | 04 | fMRIPrep input for subjects with several sessions (not made for a single session). |
 | bids_sessions/ | 04 | Sessions kept separate. |
 | derivatives/91k_fmriprep_*, 91k_xcpd_* | 05 | Pipeline outputs. XCP-D is the deliverable. |
 | jobs/, logs/ | all | Child job IDs; postnordic, IntendedFor and NORDIC logs (logs/nordic/). |

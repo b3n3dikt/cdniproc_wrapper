@@ -20,6 +20,7 @@
 #      >> stops here with an error if any session's NORDIC failed <<
 #   c. 7T only:  final T1w/T2w are copied in (cleanup_7T_anat.sh); a provisional IntendedFor is written,
 #      then a fake forward-PE (AP) fieldmap is made from the functional data (7T fmaps are PA only)
+#   (one session only: d and e are skipped - fMRIPrep reads derivatives/nordic directly; IntendedFor is written there)
 #   d. make_layouts.py builds   bids_combined/  and  bids_sessions/   from derivatives/nordic
 #   e. IntendedFor is written again in BOTH new datasets (file names/paths changed in step d)
 set -Eeuo pipefail
@@ -73,6 +74,21 @@ if [[ "${MAGNET}" == "7T" ]]; then
         run_intendedfor "${NORDIC_DIR}" "${SUB}" "${s}" lookback force-jsbr
         python "${HELPERS}/generate_fake_ap.py" "${NORDIC_DIR}" "${SUB}" "${s}" -v
     done
+fi
+
+# ---- one session: nothing to combine or split ------------------------------------------
+# fMRIPrep can read derivatives/nordic directly (that is also what the lab's own workflow does), and the
+# session keeps its real name instead of becoming "ses-combined". Set SKIP_LAYOUTS_FOR_ONE_SESSION=0 to always build both.
+if (( ${#SESSIONS[@]} == 1 )) && [[ "${SKIP_LAYOUTS_FOR_ONE_SESSION:-1}" == "1" ]]; then
+    s="${SESSIONS[0]}"
+    log "only one session (ses-${s}): skipping bids_combined / bids_sessions"
+    run_intendedfor "${NORDIC_DIR}" "${SUB}" "${s}" auto
+    echo
+    log "DONE. fMRIPrep input (step 05 picks it automatically, or use --layout nordic):"
+    echo "    ${NORDIC_DIR}/sub-${SUB}/ses-${s}/{anat,func,fmap}"
+    echo "Check: every fmap json has an IntendedFor:"
+    echo "    grep -L IntendedFor ${NORDIC_DIR}/sub-${SUB}/ses-${s}/fmap/*.json   (should print nothing)"
+    exit 0
 fi
 
 # ---- d. build the two datasets ----------------------------------------------------

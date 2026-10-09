@@ -9,12 +9,14 @@
 #
 # STEP 5 - fMRIPrep, then XCP-D, then the lab's post-XCP-D conversions. Per SUBJECT.
 #
-# Usage:  sbatch 05_fmriprep_xcpd.sh <SUB> [MAGNET] [combined|sessions]      (MAGNET omitted = DEFAULT_MAGNET in config.sh)
-#         default layout = combined  (reads bids_combined, the single ses-combined session)
+# Usage:  sbatch 05_fmriprep_xcpd.sh <SUB> [MAGNET] [auto|nordic|combined|sessions]      (MAGNET omitted = DEFAULT_MAGNET in config.sh)
+#         default layout = auto: bids_combined if step 04 built it (several sessions), otherwise derivatives/nordic
+#                          (a single session, where step 04 skips building the combined/sessions datasets)
+#         "combined" = bids_combined (one ses-combined session)   "nordic" = derivatives/nordic directly
 #         "sessions" runs on bids_sessions (all of the subject's sessions in one fMRIPrep run).
 #         NOTE: sessions layout (anat at sub-X/anat) has not been test-run through fMRIPrep yet.
 #
-# Output (under <ROOT>/derivatives):
+# Output (under <ROOT>/derivatives, or DERIV_BASE if set; work folders under WORK_BASE if set):
 #   <cifti>_fmriprep_<ver>/output/<SUB>     fMRIPrep
 #   <cifti>_xcpd_<ver>/output/<SUB>         XCP-D  <-- final deliverable (denoised + interpolated CIFTI, QC, motion .tsv)
 #
@@ -25,22 +27,33 @@ set -Eeuo pipefail
 CODE_DIR="${CODE_DIR:-${SLURM_SUBMIT_DIR:-$(cd "$(dirname "$0")" && pwd)}}"
 source "${CODE_DIR}/config.sh"; source "${CODE_DIR}/lib.sh"
 
-[[ $# -ge 1 ]] || die "Usage: sbatch $(basename "$0") <SUB> [MAGNET] [combined|sessions]"
+[[ $# -ge 1 ]] || die "Usage: sbatch $(basename "$0") <SUB> [MAGNET] [auto|nordic|combined|sessions]"
 SUB="$1"; shift
 if is_magnet "${1:-}"; then set_magnet "$1"; shift; else set_magnet "${DEFAULT_MAGNET}"; fi
-LAYOUT="${1:-combined}"
+LAYOUT="${1:-auto}"
+if [[ "${LAYOUT}" == "auto" ]]; then      # bids_combined if step 04 built it (several sessions), else derivatives/nordic (one session)
+    if   [[ -d "${BIDS_COMBINED}/sub-${SUB}" ]]; then LAYOUT=combined
+    elif [[ -d "${NORDIC_DIR}/sub-${SUB}" ]] && (( $(sessions_of "${NORDIC_DIR}" "${SUB}" | wc -l) == 1 )); then LAYOUT=nordic
+    elif [[ -d "${NORDIC_DIR}/sub-${SUB}" ]]; then die "${SUB} has several sessions in ${NORDIC_DIR} but no ${BIDS_COMBINED}/sub-${SUB}: run step 04 (or pass --layout nordic to use derivatives/nordic as it is)"
+    else die "neither ${BIDS_COMBINED}/sub-${SUB} nor ${NORDIC_DIR}/sub-${SUB} found - run step 04 first"; fi
+    log "layout auto -> ${LAYOUT}"
+fi
 case "${LAYOUT}" in
     combined) BIDS_IN="${BIDS_COMBINED}" ;;
     sessions) BIDS_IN="${BIDS_SESSIONS}" ;;
-    *) die "layout must be combined or sessions" ;;
+    nordic)   BIDS_IN="${NORDIC_DIR}" ;;
+    *) die "layout must be auto, combined, sessions or nordic" ;;
 esac
 [[ -d "${BIDS_IN}/sub-${SUB}" ]] || die "${BIDS_IN}/sub-${SUB} not found - run step 04 first"
 
-DERIV="${ROOT}/derivatives"
+# Where the pipeline results and the (huge) work folders go. Defaults: both under <ROOT>/derivatives.
+# DERIV_BASE / WORK_BASE in config.sh move them, e.g. keep the data on /projects but put the work folders on scratch.
+DERIV="${DERIV_BASE:-${ROOT}/derivatives}"
+WORK="${WORK_BASE:-${DERIV}}"
 FP_OUT="${DERIV}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}/output/${SUB}"
-FP_WORK="${DERIV}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}/work/${SUB}"
+FP_WORK="${WORK}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}/work/${SUB}"
 XC_OUT="${DERIV}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}/output/${SUB}"
-XC_WORK="${DERIV}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}/work/${SUB}"
+XC_WORK="${WORK}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}/work/${SUB}"
 mkdir -p "${FP_OUT}" "${FP_WORK}" "${XC_OUT}" "${XC_WORK}"
 
 [[ -f "${BIDS_IN}/dataset_description.json" ]] || cp -v "${HELPERS}/dataset_description.json" "${BIDS_IN}/"

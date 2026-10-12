@@ -18,7 +18,7 @@ The workflow in short: **pull the folder, edit config.sh, run the steps you want
 | 04 | `04_clean_and_layout.sh` | subject | Wait for NORDIC, check it, 7T extras, build bids_combined and bids_sessions, write IntendedFor. |
 | 05 | `05_fmriprep_xcpd.sh` | subject | fMRIPrep, XCP-D, motion and interpolation conversions, template-matching input folder. |
 
-**Terms.** **SUB** = subject ID without "sub-" (e.g. SUB001). **SES** = session label without "ses-", as it appears in the S3 folder name (numeric sessions two digits, e.g. 01; labels such as 3T1 or 7T1 are fine). **MAGNET** = 3T or 7T; optional, if you leave it out the DEFAULT_MAGNET from config.sh is used (3T unless you change it), so a study with a single field strength can ignore it. Where the DICOMs sit in S3 is set by S3_BUCKET and S3_DICOM_PATH in config.sh.
+**Terms.** **SUB** = subject ID without "sub-" (e.g. SUB001). **SES** = session label without "ses-", as it appears in the S3 folder name (numeric sessions two digits, e.g. 01; labels such as 3T1 or 7T1 are fine). **MAGNET** = 3T or 7T; optional, if you leave it out the DEFAULT_MAGNET from config.sh is used, and if that is empty too (the default) no field strength is used at all, so a study that does not distinguish 3T from 7T can ignore it. Where the DICOMs sit in S3 is set by S3_BUCKET and S3_DICOM_PATH in config.sh.
 
 ## 2. Getting started
 
@@ -43,7 +43,7 @@ Everything you may need to change is in `config.sh`, which is divided into numbe
 | Setting | Section | What to set |
 |---|---|---|
 | SLURM_ACCOUNT | 1 | Your MSI group/account. run_subject.sh passes it to every job, so the scripts need no edits (they no longer contain an account). |
-| DEFAULT_MAGNET | 1 | Field strength used when you leave MAGNET out of a command (3T by default). Set it to 7T if your study is all 7T. Only studies with both 3T and 7T data need to type MAGNET. |
+| DEFAULT_MAGNET | 1 | Field strength used when you leave MAGNET out of a command. Empty by default: no 3T/7T is used, so the 7T-only steps are skipped and {MAGNET} cannot be used in S3_DICOM_PATH. Set it to 3T or 7T if your whole study is one field strength. Only studies with both need to type MAGNET. |
 | S3_BUCKET | 1 | Bucket name only (the part right after s3://). |
 | S3_DICOM_PATH | 1 | Where one session's DICOMs are inside the bucket, as a template; {SUB}, {SES} and {MAGNET} are filled in for each run. Default `dicoms/{SUB}_{SES}/`. For s3://<bucket>/mystudy/3T/dicoms/sub-SUB001_ses-3T1/ use `mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/`. If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern. |
 | USE_MAGNET_FOLDER | 1 | 0 (default): outputs go straight in OUT_BASE (e.g. .../processing/bids/). 1: outputs go in OUT_BASE/<MAGNET>/ (e.g. .../processing/3T/bids/); use 1 for a study with both 3T and 7T data so the two do not mix. If you run on an existing folder that already has 3T/bids, set 1; a warning is printed if the setting does not match. |
@@ -89,7 +89,7 @@ cd cdniproc_wrapper
 # Steps 2-5 (--from 2): convert to BIDS, NORDIC, build datasets, fMRIPrep + XCP-D
 ./run_subject.sh SUB001 3T 01 02 --from 2
 
-# Same, but MAGNET left out (uses DEFAULT_MAGNET from config.sh, 3T by default)
+# Same, but MAGNET left out (no 3T/7T is used, unless DEFAULT_MAGNET is set in config.sh)
 ./run_subject.sh SUB001 01 02 --from 2
 ```
 
@@ -200,7 +200,7 @@ All under `OUT_BASE/` (or under `OUT_BASE/<MAGNET>/` if USE_MAGNET_FOLDER=1)
 
 ## 7. 3T vs 7T (and studies with only one)
 
-MAGNET only matters for studies that have both 3T and 7T data. Studies with one field strength can leave it out of every command and set DEFAULT_MAGNET in config.sh (3T by default). With both, give it explicitly. If you set USE_MAGNET_FOLDER=1 in config.sh it also names the output sub-folder (OUT_BASE/3T/ or OUT_BASE/7T/), which keeps the two field strengths apart. The default is no such folder.
+MAGNET only matters for studies that have both 3T and 7T data. Studies with one field strength can leave it out of every command and set DEFAULT_MAGNET in config.sh (empty by default, meaning no field strength). With both, give it explicitly. If you set USE_MAGNET_FOLDER=1 in config.sh it also names the output sub-folder (OUT_BASE/3T/ or OUT_BASE/7T/), which keeps the two field strengths apart. The default is no such folder.
 
 - **7T:** step 03 also denoises the MP2RAGE and starts bias-field-correction jobs; step 04 copies the final T1w/T2w in, writes a provisional IntendedFor and fabricates the AP fieldmap. Confirm on the first 7T run: LayNii denoise ran, a *_dir-AP_*_epi file exists in derivatives/nordic/.../fmap, and the final T1w is named ..._run-NN_T1w.
 - **3T:** none of that.

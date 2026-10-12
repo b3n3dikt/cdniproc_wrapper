@@ -54,7 +54,7 @@ log "3/5 building summary TSV"
 python "${CDNIPROC}/nii_init_gpt5.py" "${HELPER_OUT}" -p "${SUB}" -s "${SES}" -o "${TSV}"
 
 log "4/5 applying study label rules"
-python "${HELPERS}/apply_label_rules.py" "${TSV}" "${HELPERS}/label_rules.csv" "${MAGNET}"
+python "${HELPERS}/apply_label_rules.py" "${TSV}" "${HELPERS}/label_rules.csv" "${MAGNET:-ANY}"
 
 log "5/5 making the text view of the TSV (an alternative to LibreOffice)"
 python "${HELPERS}/view_tsv.py" make "${TSV}" --force --print

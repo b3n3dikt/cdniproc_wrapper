@@ -7,13 +7,13 @@
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
-#   MAGNET  3T or 7T. Optional: if left out, DEFAULT_MAGNET from config.sh is used (3T unless you change it)
+#   MAGNET  3T or 7T. Optional: if left out, DEFAULT_MAGNET from config.sh is used; if that is empty too (default), no field strength is used
 #   SES     one or more session labels without "ses-", two digits as in the S3 folder name   e.g. 01 02
 #   --from N / --to N   run only steps N..M of the 5 (default 1..5)
 #
-# Examples  (subject SUB001, 3T scanner, sessions 01 and 02):
+# Examples  (subject SUB001, sessions 01 and 02):
 #   ./run_subject.sh SUB001 3T 01 02             # run all 5 steps for both sessions
-#   ./run_subject.sh SUB001 01 02                # same thing; MAGNET left out, so DEFAULT_MAGNET (3T) is used
+#   ./run_subject.sh SUB001 01 02                # MAGNET left out: runs with no 3T/7T (unless DEFAULT_MAGNET is set in config.sh)
 #   ./run_subject.sh SUB001 3T 01 02 --to 1      # step 1 only: make the summary TSVs so you can review them
 #   ./run_subject.sh SUB001 3T 01 02 --from 2    # TSVs are reviewed: steps 2-5 (convert, NORDIC, layouts, fMRIPrep + XCP-D)
 #   ./run_subject.sh SUB001 3T 01 02 --from 2 --use-txt   # same, but first copy your edits from the .view.txt into the TSV
@@ -47,6 +47,7 @@ for v in SLURM_ACCOUNT S3_BUCKET OUT_BASE; do
     [[ "${!v}" == *YOUR_* ]] && die "${v} in config.sh is still a placeholder (${!v}) - edit config.sh first"
 done
 set_magnet "${MAG}"            # validates MAGNET, creates folders
+MAGARG=(); [[ -n "${MAG}" ]] && MAGARG=("${MAG}")   # empty MAGNET: pass nothing (an empty word would be read as a session)
 (( FROM >= 1 && TO <= 5 && FROM <= TO )) || die "--from/--to must satisfy 1 <= from <= to <= 5"
 
 cd "${CODE_DIR}"               # jobs write logs to ./logs
@@ -78,7 +79,7 @@ for ses in "${SESSIONS[@]}"; do
             2) script=02_convert_to_bids.sh ;;
             3) script=03_run_nordic.sh ;;
         esac
-        prev="$(submit "${prev}" "${script}" "${SUB}" "${ses}" "${MAG}")"
+        prev="$(submit "${prev}" "${script}" "${SUB}" "${ses}" ${MAGARG[@]+"${MAGARG[@]}"})"
         echo "sub-${SUB} ses-${ses}  step ${step} (${script})  job ${prev}"
     done
     [[ -n "${prev}" ]] && LAST_PER_SES+=("${prev}")
@@ -86,14 +87,14 @@ done
 
 dep="$(IFS=:; echo "${LAST_PER_SES[*]:-}")"
 if (( FROM <= 4 && TO >= 4 )); then
-    j4="$(submit "${dep}" 04_clean_and_layout.sh "${SUB}" "${MAG}" "${SESSIONS[@]}")"
+    j4="$(submit "${dep}" 04_clean_and_layout.sh "${SUB}" ${MAGARG[@]+"${MAGARG[@]}"} "${SESSIONS[@]}")"
     echo "sub-${SUB}  step 4 (04_clean_and_layout.sh)  job ${j4}"
     dep="${j4}"
 elif (( FROM > 4 )); then
     dep=""
 fi
 if (( FROM <= 5 && TO >= 5 )); then
-    j5="$(submit "${dep}" 05_fmriprep_xcpd.sh "${SUB}" "${MAG}" "${LAYOUT}")"
+    j5="$(submit "${dep}" 05_fmriprep_xcpd.sh "${SUB}" ${MAGARG[@]+"${MAGARG[@]}"} "${LAYOUT}")"
     echo "sub-${SUB}  step 5 (05_fmriprep_xcpd.sh)  job ${j5}"
 fi
 

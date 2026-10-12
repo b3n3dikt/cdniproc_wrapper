@@ -26,12 +26,12 @@ mkdir -p logs
 # Steps 2-5 (--from 2): convert to BIDS, NORDIC, build the datasets, fMRIPrep + XCP-D, chained with --dependency=afterok
 ./run_subject.sh SUB001 3T 01 02 --from 2
 
-# MAGNET is optional: left out, DEFAULT_MAGNET from config.sh (3T) is used
+# MAGNET is optional: left out, no 3T/7T is used (unless DEFAULT_MAGNET is set in config.sh)
 ./run_subject.sh SUB001 01 02 --from 2
 ```
 
 - `SUB` = subject ID without `sub-`.
-- `MAGNET` = `3T` or `7T`. **Optional.** Only studies with both field strengths need to type it. Everyone else leaves it out and, if their study is not 3T, sets `DEFAULT_MAGNET="7T"` once in `config.sh`.
+- `MAGNET` = `3T` or `7T`. **Optional.** Only studies with both field strengths need to type it. Everyone else leaves it out: nothing is assumed, and the 7T-only steps are skipped. If every session of your study is 7T (or 3T), set `DEFAULT_MAGNET="7T"` once in `config.sh` instead of typing it.
 - `SES` = one or more session labels without `ses-`, as they appear in your S3 folder names (see `S3_DICOM_PATH` in `config.sh`). Numeric sessions should be two digits (`01`); labels like `3T1` or `7T1` are fine as they are.
 - `--from N` / `--to N` pick steps 1–5. Always run from this folder.
 

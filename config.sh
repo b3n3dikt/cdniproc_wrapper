@@ -14,10 +14,10 @@
 # ---- 1. who / where -----------------------------------------------------------
 export SLURM_ACCOUNT="YOUR_SLURM_ACCOUNT"    # EDIT: your MSI account. run_subject.sh gives it to every job; child jobs (NORDIC, bias-field) inherit it
 export SBATCH_ACCOUNT="${SLURM_ACCOUNT}"     # so sbatch calls made inside jobs use it too
-export DEFAULT_MAGNET="${DEFAULT_MAGNET:-3T}"   # used when you leave MAGNET out of a command. Most studies have only one field strength: set it to 7T if that is yours
+export DEFAULT_MAGNET="${DEFAULT_MAGNET:-}"     # EMPTY (default): if you leave 3T/7T out of a command, none is used (no 3T/7T-specific steps or folders). Set to 3T or 7T to make that the fallback
 export S3_BUCKET="YOUR_S3_BUCKET"           # EDIT: bucket name only (the part right after s3://)
 # Where one session's DICOMs are inside the bucket. {SUB}, {SES} and {MAGNET} are filled in for each run
-# ({SUB} = subject ID, {SES} = session label, {MAGNET} = 3T or 7T).
+# ({SUB} = subject ID, {SES} = session label, {MAGNET} = 3T or 7T; only use {MAGNET} if you give 3T/7T in the command or set DEFAULT_MAGNET).
 #   DICOMs at s3://<bucket>/dicoms/SUB001_01/                    ->  'dicoms/{SUB}_{SES}/'              (default)
 #   DICOMs at s3://<bucket>/mystudy/3T/dicoms/sub-SUB001_ses-01/ ->  'mystudy/{MAGNET}/dicoms/sub-{SUB}_ses-{SES}/'
 # (If the first folder is the bucket itself, put it in S3_BUCKET and drop it from the pattern.)

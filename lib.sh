@@ -8,6 +8,7 @@ die()  { echo "ERROR: $*" >&2; exit 1; }
 # (call after set_magnet, so {MAGNET} is known)
 s3_dicom_dir() {
     local p="${S3_DICOM_PATH}"
+    [[ "${p}" == *"{MAGNET}"* && -z "${MAGNET:-}" ]] && die "S3_DICOM_PATH contains {MAGNET} but no 3T/7T was given. Add 3T or 7T to the command (./run_subject.sh SUB 3T SES ...) or set DEFAULT_MAGNET in config.sh."
     p="${p//\{SUB\}/$1}"; p="${p//\{SES\}/$2}"; p="${p//\{MAGNET\}/${MAGNET}}"
     p="${p#/}"; [[ "${p}" == */ ]] || p="${p}/"
     echo "s3://${S3_BUCKET}/${p}"
@@ -16,20 +17,23 @@ s3_dicom_dir() {
 # is_magnet <word>  ->  true if the word is 3T or 7T (lets MAGNET be left out of a command)
 is_magnet() { [[ "${1:-}" =~ ^[37][Tt]$ ]]; }
 
-# set_magnet <3T|7T>  ->  defines ROOT and all the folders below it
+# set_magnet <3T|7T|"">  ->  defines ROOT and all the folders below it (empty = no field strength given)
 set_magnet() {
     case "${1:-}" in
         3T|3t) MAGNET=3T ;;
         7T|7t) MAGNET=7T ;;
-        *) die "MAGNET must be 3T or 7T (got '${1:-}')" ;;
+        "")    MAGNET="" ;;      # nothing given: no 3T/7T-specific behaviour, no 3T/7T folder
+        *) die "MAGNET must be 3T or 7T, or left out (got '${1:-}')" ;;
     esac
     for bad in bids sub- ses-; do
         [[ "${OUT_BASE}" == *"${bad}"* ]] && die "OUT_BASE contains '${bad}' - the lab NORDIC scripts split paths on that word. Change OUT_BASE in config.sh."
     done
-    if [[ "${USE_MAGNET_FOLDER:-0}" == "1" ]]; then ROOT="${OUT_BASE%/}/${MAGNET}"   # OUT_BASE/3T/...
+    if [[ "${USE_MAGNET_FOLDER:-0}" == "1" ]]; then
+        [[ -n "${MAGNET}" ]] || die "USE_MAGNET_FOLDER=1 needs 3T or 7T in the command (or DEFAULT_MAGNET in config.sh)"
+        ROOT="${OUT_BASE%/}/${MAGNET}"   # OUT_BASE/3T/...
     else
         ROOT="${OUT_BASE%/}"                                                          # OUT_BASE/... (no 3T/7T folder)
-        [[ -d "${ROOT}/${MAGNET}/bids" ]] && echo "WARNING: ${ROOT}/${MAGNET}/bids exists but USE_MAGNET_FOLDER is not 1, so outputs go to ${ROOT}/ . If your earlier data is in ${MAGNET}/, set USE_MAGNET_FOLDER=1 in config.sh." >&2
+        [[ -n "${MAGNET}" && -d "${ROOT}/${MAGNET}/bids" ]] && echo "WARNING: ${ROOT}/${MAGNET}/bids exists but USE_MAGNET_FOLDER is not 1, so outputs go to ${ROOT}/ . If your earlier data is in ${MAGNET}/, set USE_MAGNET_FOLDER=1 in config.sh." >&2
     fi
     DICOM_LAST_DIR="${ROOT}/dicoms_last"      # one DICOM per series (for the summary TSV)
     DICOM_DIR="${ROOT}/dicoms"                # full DICOMs

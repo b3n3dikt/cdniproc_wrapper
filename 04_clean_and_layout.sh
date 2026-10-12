@@ -36,7 +36,7 @@ if (( ${#SESSIONS[@]} == 0 )); then
     while IFS= read -r s; do SESSIONS+=("$s"); done < <(sessions_of "${RAW_BIDS}" "${SUB}")
 fi
 (( ${#SESSIONS[@]} )) || die "no sessions found in ${RAW_BIDS}/sub-${SUB}"
-log "sub-${SUB} (${MAGNET}) sessions: ${SESSIONS[*]}"
+log "sub-${SUB} (${MAGNET:-no 3T/7T}) sessions: ${SESSIONS[*]}"
 
 load_env
 need_cmd python

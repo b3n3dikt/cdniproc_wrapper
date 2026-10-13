@@ -4,12 +4,18 @@
 #
 # Usage:
 #   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout auto|nordic|combined|sessions] [--use-txt]
+#                    [--anat-ref unbiased|first-lex|sessionwise] [--coreg-level subject|session|run]
+#                    [--sessions-anat subject|session] [--tag LABEL]
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
 #   MAGNET  3T or 7T. Optional: if left out, DEFAULT_MAGNET from config.sh is used; if that is empty too (default), no field strength is used
 #   SES     one or more session labels without "ses-", two digits as in the S3 folder name   e.g. 01 02
 #   --from N / --to N   run only steps N..M of the 5 (default 1..5)
+#   --anat-ref X        fMRIPrep --subject-anatomical-reference (default: ANAT_REFERENCE in config.sh = unbiased)
+#   --coreg-level X     fMRIPrep --bold-coreg-level (default: COREG_LEVEL in config.sh = subject; session or run to override)
+#   --sessions-anat X   bids_sessions layout: anat outside the sessions (subject, default) or inside each session (session)
+#   --tag LABEL         suffix for the step-05 output folders, so test runs on the same subject do not overwrite each other
 #
 # Examples  (subject SUB001, sessions 01 and 02):
 #   ./run_subject.sh SUB001 3T 01 02             # run all 5 steps for both sessions
@@ -34,12 +40,21 @@ while (( $# )); do
         --from)   FROM="$2"; shift 2 ;;
         --to)     TO="$2"; shift 2 ;;
         --layout) LAYOUT="$2"; shift 2 ;;
+        --anat-ref)      ANAT_REFERENCE="$2"; shift 2 ;;
+        --coreg-level)   COREG_LEVEL="$2"; shift 2 ;;
+        --sessions-anat) SESSIONS_ANAT="$2"; shift 2 ;;
+        --tag)           RUN_TAG="$2"; shift 2 ;;
         --use-txt|--use-view) export USE_TXT_EDITS=1; shift ;;   # --use-view = old name, still accepted
         -h|--help) usage; exit 0 ;;
         *) POS+=("$1"); shift ;;
     esac
 done
 (( ${#POS[@]} >= 2 )) || { usage; exit 1; }
+case "${ANAT_REFERENCE}"  in unbiased|first-lex|sessionwise) ;; *) die "--anat-ref must be unbiased, first-lex or sessionwise (got '${ANAT_REFERENCE}')" ;; esac
+case "${COREG_LEVEL}"     in subject|session|run) ;;           *) die "--coreg-level must be subject, session or run (got '${COREG_LEVEL}')" ;; esac
+case "${SESSIONS_ANAT}"   in subject|session) ;;               *) die "--sessions-anat must be subject or session (got '${SESSIONS_ANAT}')" ;; esac
+[[ -z "${RUN_TAG}" || "${RUN_TAG}" =~ ^[A-Za-z0-9._-]+$ ]] || die "--tag may only contain letters, digits, . _ -"
+export ANAT_REFERENCE COREG_LEVEL SESSIONS_ANAT RUN_TAG   # picked up by the jobs (sbatch --export=ALL)
 SUB="${POS[0]}"
 if is_magnet "${POS[1]}"; then MAG="${POS[1]}"; SESSIONS=("${POS[@]:2}"); else MAG="${DEFAULT_MAGNET}"; SESSIONS=("${POS[@]:1}"); fi
 (( ${#SESSIONS[@]} )) || { usage; exit 1; }

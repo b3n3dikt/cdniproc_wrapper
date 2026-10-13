@@ -44,6 +44,7 @@ set_magnet() {
     NORDIC_DIR="${ROOT}/derivatives/nordic"   # NORDIC-cleaned, per session
     BIDS_COMBINED="${ROOT}/bids_combined"     # sub-X/ses-combined/...   (fMRIPrep input)
     BIDS_SESSIONS="${ROOT}/bids_sessions"     # sub-X/anat + sub-X/ses-N/...
+    [[ "${SESSIONS_ANAT:-subject}" == "session" ]] && BIDS_SESSIONS="${ROOT}/bids_sessions_anat-in-ses"   # sub-X/ses-N/{anat,func,fmap}
     JOB_DIR="${ROOT}/jobs"                    # job IDs of child jobs each step waits for
     LOG_DIR="${ROOT}/logs"
     export MAGNET ROOT DICOM_LAST_DIR DICOM_DIR HELPER_DIR SUMMARY_DIR RAW_BIDS NORDIC_DIR \

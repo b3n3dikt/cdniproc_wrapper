@@ -69,7 +69,7 @@ export LAYNII_DIR="/projects/standard/bart/shared/projects/7Tpiloting/anat_testi
 # Containers are read from $PIPELINES_DIR/fmriprep/fmriprep_<ver>.sif and xcp_d/xcp_d_<ver>.sif
 # - `ls $PIPELINES_DIR/fmriprep $PIPELINES_DIR/xcp_d` shows what is installed.
 # Pick the versions once for the whole study and do not change them part-way.
-export FMRIPREP_VERSION="25.2.6"
+export FMRIPREP_VERSION="${FMRIPREP_VERSION:-unstable_10092026a}"   # the dev build that has --bold-coreg-level; change once per study
 export XCPD_VERSION="26.2.0"
 export CIFTI_SPACE="91k"
 export PIPELINES_DIR="/projects/standard/faird/shared/code/external/pipelines"
@@ -101,16 +101,26 @@ RES_NORDIC_TIME=1:30:00
 # Step 05 always adds these itself, do NOT list them here: --fs-license-file, --participant-label,
 # -w (work dir) and the input/output folders.
 # The thread counts below follow the CPUs you request in section 5 so the two stay in sync.
+# The two multi-session flags are set here (or per run: ./run_subject.sh ... --anat-ref X --coreg-level Y):
+#   ANAT_REFERENCE  --subject-anatomical-reference   unbiased (default) | first-lex | sessionwise
+#       unbiased   = one template equidistant from all T1w images (no bias toward the first session). With one T1w it has nothing to do.
+#       first-lex  = fMRIPrep's own default: anchored on the first session. sessionwise = each session on its own (needs anat in every session).
+#   COREG_LEVEL     --bold-coreg-level               subject (default) | session | run
+#       subject = runs of all sessions are aligned to one BOLD template, registered once. With one session (or ses-combined) this equals "session".
+#       session = one template per session. Use it if sessions differ a lot (head position, fieldmaps, scanner).  run = every run on its own (fMRIPrep default).
+export ANAT_REFERENCE="${ANAT_REFERENCE:-unbiased}"
+export COREG_LEVEL="${COREG_LEVEL:-subject}"
 FMRIPREP_FLAGS=(
     --output-spaces MNI152NLin6Asym:res-2:res-native
     --project-goodvoxels
     --use-syn-sdc
     --force syn-sdc
     --skull-strip-fixed-seed
+    --subject-anatomical-reference "${ANAT_REFERENCE}"
     --random-seed 1
     --omp-nthreads 3
     --cifti-output "${CIFTI_SPACE}"
-    --bold-coreg-level session
+    --bold-coreg-level "${COREG_LEVEL}"
     --bold2anat-init auto
     -vv
 )
@@ -150,4 +160,8 @@ export USE_TXT_EDITS="${USE_TXT_EDITS:-0}"
 export SKIP_LAYOUTS_FOR_ONE_SESSION="${SKIP_LAYOUTS_FOR_ONE_SESSION:-1}"
 
 # Where anatomicals go in bids_sessions:  subject = sub-X/anat   |   session = sub-X/ses-N/anat
-export SESSIONS_ANAT="subject"
+export SESSIONS_ANAT="${SESSIONS_ANAT:-subject}"   # or per run: ./run_subject.sh ... --sessions-anat session
+
+# Optional label added to the step-05 output folders, so several fMRIPrep runs on the same subject (e.g. different layouts
+# or flags) do not overwrite each other or share a FreeSurfer folder. Normally set per run:  ./run_subject.sh ... --tag L1_unbiased_subject
+export RUN_TAG="${RUN_TAG:-}"

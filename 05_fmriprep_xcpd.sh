@@ -50,10 +50,11 @@ esac
 # DERIV_BASE / WORK_BASE in config.sh move them, e.g. keep the data on /projects but put the work folders on scratch.
 DERIV="${DERIV_BASE:-${ROOT}/derivatives}"
 WORK="${WORK_BASE:-${DERIV}}"
-FP_OUT="${DERIV}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}/output/${SUB}"
-FP_WORK="${WORK}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}/work/${SUB}"
-XC_OUT="${DERIV}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}/output/${SUB}"
-XC_WORK="${WORK}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}/work/${SUB}"
+TAG="${RUN_TAG:+_${RUN_TAG}}"      # optional label (run_subject.sh --tag) so test runs do not overwrite each other
+FP_OUT="${DERIV}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}${TAG}/output/${SUB}"
+FP_WORK="${WORK}/${CIFTI_SPACE}_fmriprep_${FMRIPREP_VERSION}${TAG}/work/${SUB}"
+XC_OUT="${DERIV}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}${TAG}/output/${SUB}"
+XC_WORK="${WORK}/${CIFTI_SPACE}_xcpd_${XCPD_VERSION}${TAG}/work/${SUB}"
 mkdir -p "${FP_OUT}" "${FP_WORK}" "${XC_OUT}" "${XC_WORK}"
 
 [[ -f "${BIDS_IN}/dataset_description.json" ]] || cp -v "${HELPERS}/dataset_description.json" "${BIDS_IN}/"
@@ -62,7 +63,7 @@ load_env
 set +u; module load singularity 2>/dev/null; module load "${MATLAB_MODULE}"; set -u
 SINGULARITY="$(which singularity)"
 
-log "fMRIPrep ${FMRIPREP_VERSION} on ${BIDS_IN}"
+log "fMRIPrep ${FMRIPREP_VERSION} on ${BIDS_IN} (layout ${LAYOUT}; --subject-anatomical-reference ${ANAT_REFERENCE}, --bold-coreg-level ${COREG_LEVEL}${RUN_TAG:+, tag ${RUN_TAG}})"
 env -i "${SINGULARITY}" run --cleanenv \
     -B /tmp:/tmp \
     -B "${BIDS_IN}":/bids_dir \

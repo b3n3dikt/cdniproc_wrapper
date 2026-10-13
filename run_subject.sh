@@ -5,7 +5,7 @@
 # Usage:
 #   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout auto|nordic|combined|sessions] [--use-txt]
 #                    [--anat-ref unbiased|first-lex|sessionwise] [--coreg-level subject|session|run]
-#                    [--sessions-anat subject|session] [--tag LABEL]
+#                    [--sessions-anat subject|session] [--both-anat] [--tag LABEL]
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
@@ -15,6 +15,7 @@
 #   --anat-ref X        fMRIPrep --subject-anatomical-reference (default: ANAT_REFERENCE in config.sh = unbiased)
 #   --coreg-level X     fMRIPrep --bold-coreg-level (default: COREG_LEVEL in config.sh = subject; session or run to override)
 #   --sessions-anat X   bids_sessions layout: anat outside the sessions (subject, default) or inside each session (session)
+#   --both-anat         step 04: build BOTH bids_sessions variants (anat outside and anat inside the sessions)
 #   --tag LABEL         suffix for the step-05 output folders, so test runs on the same subject do not overwrite each other
 #
 # Examples  (subject SUB001, sessions 01 and 02):
@@ -44,6 +45,7 @@ while (( $# )); do
         --coreg-level)   COREG_LEVEL="$2"; shift 2 ;;
         --sessions-anat) SESSIONS_ANAT="$2"; shift 2 ;;
         --tag)           RUN_TAG="$2"; shift 2 ;;
+        --both-anat)     export BOTH_ANAT=1; shift ;;
         --use-txt|--use-view) export USE_TXT_EDITS=1; shift ;;   # --use-view = old name, still accepted
         -h|--help) usage; exit 0 ;;
         *) POS+=("$1"); shift ;;

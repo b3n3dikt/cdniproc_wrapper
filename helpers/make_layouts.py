@@ -200,6 +200,8 @@ def main():
                     help="bids_sessions: keep anat inside each ses-* folder instead of sub-X/anat")
     ap.add_argument("--dataset-description", type=Path, help="copied into both output roots if missing")
     ap.add_argument("--map-out", type=Path, help="write a TSV of old-path -> new-path")
+    ap.add_argument("--skip-combined", action="store_true",
+                    help="build only the bids_sessions dataset (leave --out-combined untouched)")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -225,14 +227,15 @@ def main():
     assign_new_runs(items)
 
     if not args.dry_run:
-        for root in (args.out_combined, args.out_sessions):
+        for root in ((args.out_sessions,) if args.skip_combined else (args.out_combined, args.out_sessions)):
             target = root / f"sub-{sub}"
             if target.exists():
                 print(f"removing old {target}")
                 shutil.rmtree(target)
 
     map_rows = []
-    build_combined(items, sub, args.out_combined, args.dry_run, map_rows)
+    if not args.skip_combined:
+        build_combined(items, sub, args.out_combined, args.dry_run, map_rows)
     build_sessions(items, sub, args.out_sessions, args.anat_in_session, args.dry_run, map_rows)
 
     if skipped:
@@ -241,7 +244,7 @@ def main():
 
     if not args.dry_run:
         if args.dataset_description and args.dataset_description.exists():
-            for root in (args.out_combined, args.out_sessions):
+            for root in ((args.out_sessions,) if args.skip_combined else (args.out_combined, args.out_sessions)):
                 dd = root / "dataset_description.json"
                 if not dd.exists():
                     shutil.copy2(args.dataset_description, dd)

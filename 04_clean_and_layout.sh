@@ -98,7 +98,7 @@ python "${HELPERS}/make_layouts.py" \
     --nordic-root "${NORDIC_DIR}" --sub "${SUB}" --sessions "${SESSIONS[@]}" \
     --out-combined "${BIDS_COMBINED}" --out-sessions "${BIDS_SESSIONS}" \
     --dataset-description "${HELPERS}/dataset_description.json" \
-    --map-out "${SUMMARY_DIR}/layout_map_sub-${SUB}.tsv" "${ANAT_FLAG[@]}"
+    --map-out "${SUMMARY_DIR}/layout_map_sub-${SUB}.tsv" ${ANAT_FLAG[@]+"${ANAT_FLAG[@]}"}
 
 # ---- e. IntendedFor on the final datasets -------------------------------------------
 run_intendedfor "${BIDS_COMBINED}" "${SUB}" combined auto
@@ -106,10 +106,29 @@ for s in "${SESSIONS[@]}"; do
     run_intendedfor "${BIDS_SESSIONS}" "${SUB}" "${s}" auto
 done
 
+# ---- f. (optional, BOTH_ANAT=1 / run_subject.sh --both-anat) the other anat placement as well --------------
+# bids_sessions has two variants: anat outside the sessions (sub-X/anat) and anat inside every session. The one chosen by
+# SESSIONS_ANAT was built above; this builds the other one into its own folder, so both can be tested without a second run.
+OTHER_BIDS=""
+if [[ "${BOTH_ANAT:-0}" == "1" ]]; then
+    if [[ "${SESSIONS_ANAT}" == "session" ]]; then OTHER_BIDS="${ROOT}/bids_sessions";                OTHER_FLAG=()
+    else                                           OTHER_BIDS="${ROOT}/bids_sessions_anat-in-ses";    OTHER_FLAG=(--anat-in-session); fi
+    log "also building $(basename "${OTHER_BIDS}")"
+    python "${HELPERS}/make_layouts.py" \
+        --nordic-root "${NORDIC_DIR}" --sub "${SUB}" --sessions "${SESSIONS[@]}" \
+        --out-combined "${BIDS_COMBINED}" --out-sessions "${OTHER_BIDS}" --skip-combined \
+        --dataset-description "${HELPERS}/dataset_description.json" \
+        --map-out "${SUMMARY_DIR}/layout_map_sub-${SUB}_$(basename "${OTHER_BIDS}").tsv" ${OTHER_FLAG[@]+"${OTHER_FLAG[@]}"}
+    for s in "${SESSIONS[@]}"; do
+        run_intendedfor "${OTHER_BIDS}" "${SUB}" "${s}" auto
+    done
+fi
+
 echo
 log "DONE. Final datasets:"
 echo "    ${BIDS_COMBINED}/sub-${SUB}/ses-combined/{anat,func,fmap}"
 echo "    ${BIDS_SESSIONS}/sub-${SUB}/{anat, ses-*/func, ses-*/fmap}"
+[[ -n "${OTHER_BIDS}" ]] && echo "    ${OTHER_BIDS}/sub-${SUB}/...   (the other anat placement)"
 echo "    old-name -> new-name table: ${SUMMARY_DIR}/layout_map_sub-${SUB}.tsv"
 echo "Check: every fmap json has an IntendedFor:"
 echo "    grep -L IntendedFor ${BIDS_COMBINED}/sub-${SUB}/ses-combined/fmap/*.json   (should print nothing)"

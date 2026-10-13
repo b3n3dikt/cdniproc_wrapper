@@ -95,6 +95,7 @@ wait_for_jobs() {
 # run_intendedfor <bids_root> <SUB> <SES> [jsbr-assign-mode]
 run_intendedfor() {
     local root="$1" sub="$2" ses="$3" mode="${4:-auto}" method="${INTENDEDFOR_METHOD}"
+    [[ "${mode}" == "auto" ]] && mode="${INTENDEDFOR_MODE:-auto}"     # callers pass "auto" = "whatever config.sh / --intendedfor-mode says"
     [[ "${5:-}" == "force-jsbr" ]] && method=jsbr
     log "IntendedFor (${method}) on ${root} sub-${sub} ses-${ses}"
     case "${method}" in
@@ -104,6 +105,14 @@ run_intendedfor() {
               ( cd "${LOG_DIR}/intendedfor" && python "${CDNIPROC}/tools/IntendedFor_new.py" "${root}/sub-${sub}/ses-${ses}" ) ;;
         *)    die "INTENDEDFOR_METHOD must be jsbr or lab" ;;
     esac
+}
+
+# run_qc <bids_root> <SUB>  -> sanity check of the fieldmap mapping; writes <ROOT>/qc/..., exit code 2 = FAIL
+run_qc() {
+    local root="$1" sub="$2" syn=() f
+    for f in "${FMRIPREP_FLAGS[@]}"; do [[ "$f" == "--use-syn-sdc" ]] && syn=(--syn-sdc); done
+    python "${HELPERS}/qc_intendedfor.py" "${root}" --sub "${sub}" --out-dir "${ROOT}/qc" \
+        --mode "${INTENDEDFOR_MODE:-auto}" --max-gap-min "${QC_MAX_GAP_MIN:-30}" ${syn[@]+"${syn[@]}"}
 }
 
 # sessions_of <bids_root> <SUB>  -> prints session labels (no 'ses-') one per line

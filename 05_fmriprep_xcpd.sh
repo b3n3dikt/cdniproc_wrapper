@@ -46,6 +46,14 @@ case "${LAYOUT}" in
 esac
 [[ -d "${BIDS_IN}/sub-${SUB}" ]] || die "${BIDS_IN}/sub-${SUB} not found - run step 04 first"
 
+# status of the step-04 fieldmap QC for this layout (informational: step 05 runs regardless)
+QCS="${ROOT}/qc/bids_setup_summary.tsv"
+if [[ -f "${QCS}" ]]; then
+    awk -F'\t' -v s="sub-${SUB}" -v l="$(basename "${BIDS_IN}")" '$1==s && $2==l {print "fieldmap QC for " l ": " $8 " (" $5 " FAIL, " $6 " WARN) - see '"${ROOT}"'/qc/"; f=1} END{if(!f) print "fieldmap QC: no report for " l " (step 04 has not written one)"}' "${QCS}" | while read -r l; do log "${l}"; done
+else
+    log "fieldmap QC: no report found in ${ROOT}/qc (built by step 04)"
+fi
+
 # Where the pipeline results and the (huge) work folders go. Defaults: both under <ROOT>/derivatives.
 # DERIV_BASE / WORK_BASE in config.sh move them, e.g. keep the data on /projects but put the work folders on scratch.
 DERIV="${DERIV_BASE:-${ROOT}/derivatives}"

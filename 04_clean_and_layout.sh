@@ -76,6 +76,17 @@ if [[ "${MAGNET}" == "7T" ]]; then
     done
 fi
 
+QC_FAIL=0
+qc() { run_qc "$@" || QC_FAIL=1; }     # a FAIL is remembered and acted on at the end (QC_ON_FAIL in config.sh)
+qc_finish() {                           # qc_finish <step-5 hint>
+    (( QC_FAIL )) || return 0
+    echo
+    log "QC: FAIL - see ${ROOT}/qc/ (bids_setup_sub-${SUB}_*.md). Fix the mapping (e.g. --intendedfor-mode) and rerun step 04,"
+    echo "    or, if the report is expected (e.g. a session without fieldmaps), run step 05 yourself:"
+    echo "    ./run_subject.sh ${SUB} ${MAGNET:+${MAGNET} }${SESSIONS[*]} --from 5 --to 5 $1"
+    if [[ "${QC_ON_FAIL:-stop}" == "stop" ]]; then exit 1; fi
+}
+
 # ---- one session: nothing to combine or split ------------------------------------------
 # fMRIPrep can read derivatives/nordic directly (that is also what the lab's own workflow does), and the
 # session keeps its real name instead of becoming "ses-combined". Set SKIP_LAYOUTS_FOR_ONE_SESSION=0 to always build both.
@@ -83,11 +94,13 @@ if (( ${#SESSIONS[@]} == 1 )) && [[ "${SKIP_LAYOUTS_FOR_ONE_SESSION:-1}" == "1" 
     s="${SESSIONS[0]}"
     log "only one session (ses-${s}): skipping bids_combined / bids_sessions"
     run_intendedfor "${NORDIC_DIR}" "${SUB}" "${s}" auto
+    qc "${NORDIC_DIR}" "${SUB}"
     echo
     log "DONE. fMRIPrep input (step 05 picks it automatically, or use --layout nordic):"
     echo "    ${NORDIC_DIR}/sub-${SUB}/ses-${s}/{anat,func,fmap}"
     echo "Check: every fmap json has an IntendedFor:"
     echo "    grep -L IntendedFor ${NORDIC_DIR}/sub-${SUB}/ses-${s}/fmap/*.json   (should print nothing)"
+    qc_finish "--layout nordic"
     exit 0
 fi
 
@@ -105,6 +118,8 @@ run_intendedfor "${BIDS_COMBINED}" "${SUB}" combined auto
 for s in "${SESSIONS[@]}"; do
     run_intendedfor "${BIDS_SESSIONS}" "${SUB}" "${s}" auto
 done
+qc "${BIDS_COMBINED}" "${SUB}"
+qc "${BIDS_SESSIONS}" "${SUB}"
 
 # ---- f. (optional, BOTH_ANAT=1 / run_subject.sh --both-anat) the other anat placement as well --------------
 # bids_sessions has two variants: anat outside the sessions (sub-X/anat) and anat inside every session. The one chosen by
@@ -122,6 +137,7 @@ if [[ "${BOTH_ANAT:-0}" == "1" ]]; then
     for s in "${SESSIONS[@]}"; do
         run_intendedfor "${OTHER_BIDS}" "${SUB}" "${s}" auto
     done
+    qc "${OTHER_BIDS}" "${SUB}"
 fi
 
 echo
@@ -132,3 +148,4 @@ echo "    ${BIDS_SESSIONS}/sub-${SUB}/{anat, ses-*/func, ses-*/fmap}"
 echo "    old-name -> new-name table: ${SUMMARY_DIR}/layout_map_sub-${SUB}.tsv"
 echo "Check: every fmap json has an IntendedFor:"
 echo "    grep -L IntendedFor ${BIDS_COMBINED}/sub-${SUB}/ses-combined/fmap/*.json   (should print nothing)"
+qc_finish "--layout combined"

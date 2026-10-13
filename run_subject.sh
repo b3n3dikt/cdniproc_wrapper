@@ -6,6 +6,7 @@
 #   ./run_subject.sh <SUB> [MAGNET] <SES> [SES ...] [--from N] [--to N] [--layout auto|nordic|combined|sessions] [--use-txt]
 #                    [--anat-ref unbiased|first-lex|sessionwise] [--coreg-level subject|session|run]
 #                    [--sessions-anat subject|session] [--both-anat] [--tag LABEL]
+#                    [--intendedfor-mode auto|lookforward|lookback|nearest] [--qc-on-fail stop|warn]
 #
 # Arguments
 #   SUB     subject ID without "sub-"                                    e.g. SUB001
@@ -16,6 +17,8 @@
 #   --coreg-level X     fMRIPrep --bold-coreg-level (default: COREG_LEVEL in config.sh = subject; session or run to override)
 #   --sessions-anat X   bids_sessions layout: anat outside the sessions (subject, default) or inside each session (session)
 #   --both-anat         step 04: build BOTH bids_sessions variants (anat outside and anat inside the sessions)
+#   --intendedfor-mode  how runs are matched to fieldmaps in step 04 (default: INTENDEDFOR_MODE in config.sh = auto)
+#   --qc-on-fail X      stop (default): a QC FAIL in step 04 stops the chain; warn: report only
 #   --tag LABEL         suffix for the step-05 output folders, so test runs on the same subject do not overwrite each other
 #
 # Examples  (subject SUB001, sessions 01 and 02):
@@ -46,6 +49,8 @@ while (( $# )); do
         --sessions-anat) SESSIONS_ANAT="$2"; shift 2 ;;
         --tag)           RUN_TAG="$2"; shift 2 ;;
         --both-anat)     export BOTH_ANAT=1; shift ;;
+        --intendedfor-mode) INTENDEDFOR_MODE="$2"; shift 2 ;;
+        --qc-on-fail)    QC_ON_FAIL="$2"; shift 2 ;;
         --use-txt|--use-view) export USE_TXT_EDITS=1; shift ;;   # --use-view = old name, still accepted
         -h|--help) usage; exit 0 ;;
         *) POS+=("$1"); shift ;;
@@ -56,7 +61,9 @@ case "${ANAT_REFERENCE}"  in unbiased|first-lex|sessionwise) ;; *) die "--anat-r
 case "${COREG_LEVEL}"     in subject|session|run) ;;           *) die "--coreg-level must be subject, session or run (got '${COREG_LEVEL}')" ;; esac
 case "${SESSIONS_ANAT}"   in subject|session) ;;               *) die "--sessions-anat must be subject or session (got '${SESSIONS_ANAT}')" ;; esac
 [[ -z "${RUN_TAG}" || "${RUN_TAG}" =~ ^[A-Za-z0-9._-]+$ ]] || die "--tag may only contain letters, digits, . _ -"
-export ANAT_REFERENCE COREG_LEVEL SESSIONS_ANAT RUN_TAG   # picked up by the jobs (sbatch --export=ALL)
+case "${INTENDEDFOR_MODE}" in auto|nearest|lookback|lookforward) ;; *) die "--intendedfor-mode must be auto, nearest, lookback or lookforward (got '${INTENDEDFOR_MODE}')" ;; esac
+case "${QC_ON_FAIL}"       in stop|warn) ;; *) die "--qc-on-fail must be stop or warn (got '${QC_ON_FAIL}')" ;; esac
+export ANAT_REFERENCE COREG_LEVEL SESSIONS_ANAT RUN_TAG INTENDEDFOR_MODE QC_ON_FAIL   # picked up by the jobs (sbatch --export=ALL)
 SUB="${POS[0]}"
 if is_magnet "${POS[1]}"; then MAG="${POS[1]}"; SESSIONS=("${POS[@]:2}"); else MAG="${DEFAULT_MAGNET}"; SESSIONS=("${POS[@]:1}"); fi
 (( ${#SESSIONS[@]} )) || { usage; exit 1; }
@@ -81,7 +88,7 @@ submit() {                     # submit <dependency-or-empty> <script> <args...>
     for v in CPUS MEM TIME PART; do name="RES_${n}_${v}"; [[ -n "${!name:-}" ]] || die "${name} is not set in config.sh"; done
     local c="RES_${n}_CPUS" m="RES_${n}_MEM" t="RES_${n}_TIME" p="RES_${n}_PART"
     args+=(-c "${!c}" --mem="${!m}" -t "${!t}" -p "${!p}")
-    [[ -n "${dep}" ]] && args+=(--dependency="afterok:${dep}")
+    [[ -n "${dep}" ]] && args+=(--dependency="afterok:${dep}" --kill-on-invalid-dep=yes)
     local id; id="$("${args[@]}" "$@")"
     echo "${id%%;*}"
 }

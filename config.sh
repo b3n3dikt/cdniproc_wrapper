@@ -149,6 +149,20 @@ export WB="/projects/standard/faird/shared/code/external/utilities/workbench/1.4
 #   lab  = cdniproc_v2.0/tools/IntendedFor_new.py (shim matching)
 # Note: the 7T "fake AP" step always uses jsbr first (it needs PA-only fmaps to be handled).
 export INTENDEDFOR_METHOD="jsbr"
+# With jsbr: how runs are matched to fieldmaps (helpers/IntendedFor_JSBR.py --assign-mode). Set it once per study, to match the protocol:
+#   auto        block-aware: each fieldmap is labelled "pre" or "post" from the runs around it (can misassign when fieldmaps
+#               are split into AP/PA files minutes apart, see the QC report)
+#   lookforward each run uses the fieldmap acquired just BEFORE it (protocol: fieldmaps, then the runs they correct)
+#   lookback    each run uses the fieldmap acquired just AFTER it     nearest   the closest one in time, before or after
+# The QC step (step 04) prints what every mode would have chosen, so a wrong choice is visible. Per run: --intendedfor-mode X
+export INTENDEDFOR_MODE="${INTENDEDFOR_MODE:-auto}"
+# QC of the fieldmap mapping (helpers/qc_intendedfor.py, runs at the end of step 04; reports go to <ROOT>/qc/).
+#   stop = a FAIL (a run with no usable fieldmap, a fieldmap from another session, ...) makes step 04 exit non-zero, so a queued
+#          step 05 does not start; you can still run step 05 yourself:  ./run_subject.sh ... --from 5 --to 5
+#   warn = the same problems are only reported, and the chain continues
+# A session without any fieldmap is only a WARN when --use-syn-sdc is in FMRIPREP_FLAGS (SyN-SDC does the correction).
+export QC_ON_FAIL="${QC_ON_FAIL:-stop}"
+export QC_MAX_GAP_MIN="${QC_MAX_GAP_MIN:-30}"     # WARN if the closest mapped fieldmap is further than this (minutes) from the run
 
 # Reviewing the summary TSV (step 01 -> 02). Default 0: step 02 uses the TSV exactly as it is (edit it in LibreOffice
 # or VS Code, the original way). 1 = also copy your edits from summaries/<sub>_<ses>.view.txt into the TSV first.

@@ -28,12 +28,13 @@ set_magnet() {
     for bad in bids sub- ses-; do
         [[ "${OUT_BASE}" == *"${bad}"* ]] && die "OUT_BASE contains '${bad}' - the lab NORDIC scripts split paths on that word. Change OUT_BASE in config.sh."
     done
-    if [[ "${USE_MAGNET_FOLDER:-0}" == "1" ]]; then
-        [[ -n "${MAGNET}" ]] || die "USE_MAGNET_FOLDER=1 needs 3T or 7T in the command (or DEFAULT_MAGNET in config.sh)"
-        ROOT="${OUT_BASE%/}/${MAGNET}"   # OUT_BASE/3T/...
+    if [[ -n "${MAGNET}" ]]; then
+        ROOT="${OUT_BASE%/}/${MAGNET}"                                                # 3T or 7T typed: OUT_BASE/3T/...
     else
-        ROOT="${OUT_BASE%/}"                                                          # OUT_BASE/... (no 3T/7T folder)
-        [[ -n "${MAGNET}" && -d "${ROOT}/${MAGNET}/bids" ]] && echo "WARNING: ${ROOT}/${MAGNET}/bids exists but USE_MAGNET_FOLDER is not 1, so outputs go to ${ROOT}/ . If your earlier data is in ${MAGNET}/, set USE_MAGNET_FOLDER=1 in config.sh." >&2
+        ROOT="${OUT_BASE%/}"                                                          # no 3T/7T: OUT_BASE/...
+        for m in 3T 7T; do
+            [[ -d "${ROOT}/${m}/bids" ]] && echo "WARNING: ${ROOT}/${m}/bids exists but no 3T/7T was given, so outputs go to ${ROOT}/ . If your earlier data is in ${m}/, add ${m} to the command (e.g. ./run_subject.sh SUB ${m} SES ...)." >&2
+        done
     fi
     DICOM_LAST_DIR="${ROOT}/dicoms_last"      # one DICOM per series (for the summary TSV)
     DICOM_DIR="${ROOT}/dicoms"                # full DICOMs

@@ -26,17 +26,16 @@ export S3_DICOM_PATH='dicoms/{SUB}_{SES}/'
 #   to set it, change the line to e.g.  export STUDY_NAME="mystudy"      (no "bids", "sub-" or "ses-" in the name)
 export STUDY_NAME="${STUDY_NAME:-}"
 
-# Everything is written under  $OUT_BASE/   (see USE_MAGNET_FOLDER below to add a 3T/ or 7T/ sub-folder)
+# Everything is written under  $OUT_BASE/   (or $OUT_BASE/3T/ or $OUT_BASE/7T/ if you type 3T/7T in the command, see below)
 #   with STUDY_NAME="mystudy":  /scratch.global/<you>/projects/mystudy/data/processing
 #   with STUDY_NAME="":         /scratch.global/<you>/projects/data/processing
 # Or set OUT_BASE yourself to any location. Keep the word "bids" and the strings "sub-" / "ses-" OUT of
 # this path (and of STUDY_NAME) - the lab's NORDIC scripts find their folders by splitting the path on those words.
 export OUT_BASE="${OUT_BASE:-/scratch.global/${USER}/projects/${STUDY_NAME:+${STUDY_NAME}/}data/processing}"
-# 0 (default): outputs go straight in $OUT_BASE        e.g. .../processing/bids/sub-X/...
-# 1:           outputs go in $OUT_BASE/<MAGNET>/        e.g. .../processing/3T/bids/sub-X/...
-#              Use 1 for a study with BOTH 3T and 7T data, so the two do not mix.
-#              (MAGNET is still used for the 7T-only steps and for {MAGNET} in S3_DICOM_PATH either way.)
-export USE_MAGNET_FOLDER="${USE_MAGNET_FOLDER:-0}"
+# 3T/7T folder: automatic. If you type 3T or 7T in the command (or set DEFAULT_MAGNET above), outputs go in
+# $OUT_BASE/<MAGNET>/   e.g. .../processing/3T/bids/sub-X/...   If you leave it out, they go straight in $OUT_BASE/
+# e.g. .../processing/bids/sub-X/...  Always type the same thing for the same study, or the data will be looked
+# for in a different folder (a warning is printed if a 3T/ or 7T/ folder exists and you left it out).
 
 # Where step 05 (fMRIPrep + XCP-D) writes. Leave both EMPTY for the default: <outputs above>/derivatives.
 # The work folders are HUGE and only needed while running, so if OUT_BASE is on a place with a small quota

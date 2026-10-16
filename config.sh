@@ -53,7 +53,7 @@ export HELPERS="${CODE_DIR}/helpers"
 export LAB_UTILS="/projects/standard/faird/shared/code/internal/utilities"
 export CDNIPROC="${LAB_UTILS}/cdniproc_v2.0"
 export NORDIC_WRAPPER="${LAB_UTILS}/Dcm2bids3_NORDIC_wrapper"   # runnordic.m lives here (called by nordicsbatch_new.sh)
-export S3_LAST_DICOMS="${LAB_UTILS}/MSI-utilities/s3_get_last_dicoms/s3_get_last_dicoms.sh"
+export S3_LAST_DICOMS="${HELPERS}/s3_get_last_dicoms.sh"   # local copy: skips S3 folder-marker (DIROBJ) entries; original lives in ${LAB_UTILS}/MSI-utilities/s3_get_last_dicoms/
 # sbatch script NORDIC jobs run. make_nordic_cmds.py hard-codes the shared one (1.5 h limit, msismall).
 # To use a modified copy (e.g. longer -t), point this at it; 03_run_nordic.sh swaps it into the command list.
 export NORDIC_SBATCH="${CDNIPROC}/code/nordicsbatch_new.sh"
